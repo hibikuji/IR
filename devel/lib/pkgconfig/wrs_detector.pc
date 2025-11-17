@@ -1,0 +1,1 @@
+/workspace/devel/.private/wrs_detector/lib/pkgconfig/wrs_detector.pc

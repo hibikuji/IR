@@ -1,0 +1,1 @@
+/workspace/devel/.private/hsr_perception/lib/python3/dist-packages/hsr_perception/__init__.py

@@ -1,0 +1,1 @@
+/workspace/devel/.private/wrs_detector/share/wrs_detector/cmake/wrs_detectorConfig.cmake

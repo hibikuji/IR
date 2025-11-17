@@ -1,0 +1,7 @@
+set(wrs_algorithm_SETUP_PY_SETUP_MODULE "setuptools")
+set(wrs_algorithm_SETUP_PY_VERSION "0.0.0")
+set(wrs_algorithm_SETUP_PY_SCRIPTS "")
+set(wrs_algorithm_SETUP_PY_PACKAGES "wrs_algorithm")
+set(wrs_algorithm_SETUP_PY_PACKAGE_DIRS "scripts/wrs_algorithm")
+set(wrs_algorithm_SETUP_PY_MODULES "")
+set(wrs_algorithm_SETUP_PY_MODULE_DIRS "")

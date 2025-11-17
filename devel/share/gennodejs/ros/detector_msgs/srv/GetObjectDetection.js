@@ -1,0 +1,1 @@
+/workspace/devel/.private/detector_msgs/share/gennodejs/ros/detector_msgs/srv/GetObjectDetection.js

@@ -1,0 +1,25 @@
+authors: []
+blacklist: []
+build_space: build
+catkin_make_args: []
+cmake_args:
+- -DPYTHON_EXECUTABLE=/home/developer/.pyenv/versions/catkin_py3/bin/python3
+- -DPYTHON_LIBRARY=/home/developer/.pyenv/versions/3.6.9/lib/libpython3.so
+- -DPYTHON_VERSION=3
+devel_layout: linked
+devel_space: devel
+extend_path: null
+extends: null
+install: false
+install_space: install
+isolate_install: false
+jobs_args: []
+licenses:
+- TODO
+log_space: logs
+maintainers: []
+make_args: []
+source_space: src
+use_env_cache: false
+use_internal_make_jobserver: true
+whitelist: []

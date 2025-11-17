@@ -1,0 +1,8 @@
+prefix=/workspace/devel/.private/wrs_controller
+
+Name: wrs_controller
+Description: Description of wrs_controller
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

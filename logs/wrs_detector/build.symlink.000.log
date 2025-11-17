@@ -1,0 +1,4 @@
+Symlinking /workspace/devel/share/wrs_detector/cmake/wrs_detectorConfig.cmake
+Symlinking /workspace/devel/share/wrs_detector/cmake/wrs_detectorConfig-version.cmake
+Symlinking /workspace/devel/lib/python3/dist-packages/wrs_detector/__init__.py
+Symlinking /workspace/devel/lib/pkgconfig/wrs_detector.pc
