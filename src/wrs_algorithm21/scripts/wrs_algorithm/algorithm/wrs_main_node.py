@@ -466,7 +466,8 @@ class WrsMainController(object):
 
         total_cnt = 0
         for plc, pose in hsr_position:
-            for _ in range(self.DETECT_CNT):
+            # for _ in range(self.DETECT_CNT):
+            while True:
                 # 移動と視線指示
                 self.goto_name(plc)
                 self.change_pose(pose)
@@ -478,7 +479,8 @@ class WrsMainController(object):
 
                 if graspable_obj is None:
                     rospy.logwarn("Cannot determine object to grasp. Grasping is aborted.")
-                    continue
+                    #continue
+                    break
                 label = graspable_obj["label"]
                 grasp_bbox = graspable_obj["bbox"]
                 # TODO ラベル名を確認するためにコメントアウトを外す
@@ -487,8 +489,12 @@ class WrsMainController(object):
                 # 把持対象がある場合は把持関数実施
                 grasp_pos = self.get_grasp_coordinate(grasp_bbox)
                 self.change_pose("grasp_on_table")
-                self.exec_graspable_method(grasp_pos, label)
+                
+                is_success = self.exec_graspable_method(grasp_pos, label)
                 self.change_pose("all_neutral")
+
+                if not is_success:
+                    break
 
                 # binに入れる
                 if total_cnt % 2 == 0:  self.put_in_place("bin_a_place", "put_in_bin")
@@ -537,8 +543,8 @@ class WrsMainController(object):
         """
         self.change_pose("all_neutral")
         self.execute_task1()
-        #self.execute_task2a()
-        #self.execute_task2b()
+        self.execute_task2a()
+        self.execute_task2b()
 
 
 def main():
