@@ -14,7 +14,14 @@
         "shelf": [2.3, 3.9, 90],
         "person_a": [0.7, 2.8, 180],
         "person_b": [0.7, 3.9, 180],
-        "home": [0, 0.2, 0]
+        "home": [0, 0.2, 0],
+        "drawer_left": [],
+        "drawer_top": [],
+        "drawer_bottom": [],
+        "tray_A": [],
+        "tray_B": [],
+        "container_A": [],
+        "container_B": []
     },
     "routes": {
         "test": [
@@ -31,7 +38,14 @@
             "shelf",
             "person_a",
             "person_b",
-            "home"
+            "home",
+            "drawer_left",
+            "drawer_top",
+            "drawer_bottom",
+            "tray_A",
+            "tray_B",
+            "container_A",
+            "container_B"
         ]
     }
 }

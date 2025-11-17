@@ -43,6 +43,43 @@ class WrsMainController(object):
         self.coordinates = self.load_json(self.get_path(["config", "coordinates.json"]))
         self.poses       = self.load_json(self.get_path(["config", "poses.json"]))
 
+        food_cnt = 0
+        tool_cnt = 0
+
+        self.ORIENTATION_ITEM = [
+            "Large marker", "Small marker", "Fork", "Spoon"
+        ]
+        self.FOOD_ITEM = [
+            "Cheez-it cracker box", "Domino suger box", "Jell-o chocolate pudding box",
+            "Jell-o strawberry gelatin box", "Spam potted meat can", "Master chef coffee can",
+            "Starkist tuna fish can", "Pringles chips can", "French's mustard bottle",
+            "Tomato soup can", "Plastic banana", "Plastic strawberry",
+            "Plastic apple", "Plastic lemon", "Plastic peach", "Plastic pear",
+            "Plastic orange", "Plastic plum"
+        ]
+        self.KITCHEN_ITEM = [
+            "Windex Spray bottle", "Srub cleanser bottle", "Scotch brite dobie sponge",
+            "Pitcher base", "Pitcher lid", "Plate", "Bowl", "Fork", "Spoon", "Spatula",
+            "Wine glass", "Mug"
+        ]
+        self.TOOL_ITEM = [
+            "Large marker", "Small marker", "Keys (from the Padlock)", "Bolt and nut", "Clamps"
+        ]
+        self.SHAPE_ITEM = [
+            "Credit card blank", "Mini soccer ball", "Soft ball", "Baseball", "Tennis ball",
+            "Racquetball", "Golf ball", "Marbles", "Cups", "Foam bridk", "Dice", "Chain"
+        ]
+        self.TASK_ITEM = [
+            "Rubik's cube", "Colored wood blocks", "9-peg-hole test", "Toy ariplane", "Lego duplo",
+            "Magazine", "Black t-shirt", "Timer"
+        ]
+        self.DISCARD = [
+            "Skillet", "Skillet lid", "Table cloth", "Hammer", "Adjustable wrench", "Wood block",
+            "Power drill", "Washers", "Nails", "Knife", "Scissors", "Padlock", "Phillips screwdriver",
+            "Flat screwdriver", "Clear box", "Box lid", "Footlocker"
+        ]
+
+
         # ROS通信関連の初期化
         tf_from_bbox_srv_name = "set_tf_from_bbox"
         rospy.wait_for_service(tf_from_bbox_srv_name)
@@ -475,7 +512,8 @@ class WrsMainController(object):
             ("long_table_r", "look_at_tall_table"),
         ]
 
-        total_cnt = 0
+        food_cnt = 0
+        tool_cnt = 0
         for plc, pose in hsr_position:
             # for _ in range(self.DETECT_CNT):
             while True:
@@ -508,9 +546,45 @@ class WrsMainController(object):
                     break
 
                 # binに入れる
-                if total_cnt % 2 == 0:  self.put_in_place("bin_a_place", "put_in_bin")
-                else:  self.put_in_place("bin_b_place", "put_in_bin")
-                total_cnt += 1
+                if label in self.ORIENTATION_ITEM:
+                    rospy.loginfo("カテゴリ [Orientation] -> Container_B")
+                    self.put_in_place("Container_B", "put_in_orientation_pose")
+                elif label in self.FOOD_ITEM:
+                    rospy.loginfo("カテゴリ [Food] -> Tray A / Tray B")
+                    if food_cnt % 2 == 0:
+                        self.put_in_place("Tray_A", "put_in_tray_pose")
+                    else:
+                        self.put_in_place("Tray_B", "put_in_tray_pose")
+                    food_cnt += 1 # Food専用カウンターを増やす
+                elif label in self.KITCHEN_ITEM:
+                    # カテゴリ: Kitchen items -> Container_A 
+                    rospy.loginfo("カテゴリ [Kitchen] -> Container A")
+                    self.put_in_place("Container_A", "put_in_container_pose")
+
+                elif label in self.TOOL_ITEM:
+                    # カテゴリ: Tools -> Drawer_top / Drawer_bottom 
+                    rospy.loginfo("カテゴリ [Tools] -> Drawer Top / Bottom")
+                    if tool_cnt % 2 == 0:
+                        self.put_in_place("Drawer_top", "put_in_drawer_pose")
+                    else:
+                        self.put_in_place("Drawer_bottom", "put_in_drawer_pose")
+                    tool_cnt += 1 # Tool専用カウンターを増やす
+
+                elif label in self.SHAPE_ITEM:
+                    # カテゴリ: Shape items -> Drawer_left 
+                    rospy.loginfo("カテゴリ [Shape] -> Drawer left")
+                    self.put_in_place("Drawer_left", "put_in_drawer_pose")
+
+                elif label in self.TASK_ITEM:
+                    # カテゴリ: Task items -> Bin_A 
+                    rospy.loginfo("カテゴリ [Task] -> Bin A")
+                    self.put_in_place("bin_a_place", "put_in_bin") # 既存のbin_a_placeを使用
+
+                else:
+                    # カテゴリ: Unknown objects -> Bin_B 
+                    rospy.logwarn("ラベル [%s] は分類外です。[Unknown] として Bin B に置きます。", label)
+                    self.put_in_place("bin_b_place", "put_in_bin") # 既存のbin_b_placeを使用
+                
 
     def execute_task2a(self):
         """
