@@ -495,7 +495,7 @@ class WrsMainController(object):
                 label = graspable_obj["label"]
                 grasp_bbox = graspable_obj["bbox"]
                 # TODO ラベル名を確認するためにコメントアウトを外す
-                # rospy.loginfo("grasp the " + label)
+                rospy.loginfo("grasp the " + label)
 
                 # 把持対象がある場合は把持関数実施
                 grasp_pos = self.get_grasp_coordinate(grasp_bbox)
@@ -505,6 +505,10 @@ class WrsMainController(object):
                 self.change_pose("all_neutral")
 
                 if not is_success:
+                    # ここで失敗した物体を除外する
+                    rospy.logwarn("Failed to grasp [%s]", label)
+                    if label not in self.IGNORE_LIST:
+                        self.IGNORE_LIST.append(label)
                     break
 
                 # binに入れる
