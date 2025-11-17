@@ -1,0 +1,1 @@
+/workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/AddTransformToManager.l

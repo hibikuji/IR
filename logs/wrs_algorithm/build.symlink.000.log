@@ -1,0 +1,4 @@
+Symlinking /workspace/devel/share/wrs_algorithm/cmake/wrs_algorithmConfig-version.cmake
+Symlinking /workspace/devel/share/wrs_algorithm/cmake/wrs_algorithmConfig.cmake
+Symlinking /workspace/devel/lib/python3/dist-packages/wrs_algorithm/__init__.py
+Symlinking /workspace/devel/lib/pkgconfig/wrs_algorithm.pc

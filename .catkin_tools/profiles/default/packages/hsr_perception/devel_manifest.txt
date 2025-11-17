@@ -1,0 +1,6 @@
+hsr_perception
+/workspace/devel/.private/hsr_perception/cmake.lock /workspace/devel/./cmake.lock
+/workspace/devel/.private/hsr_perception/share/hsr_perception/cmake/hsr_perceptionConfig.cmake /workspace/devel/share/hsr_perception/cmake/hsr_perceptionConfig.cmake
+/workspace/devel/.private/hsr_perception/share/hsr_perception/cmake/hsr_perceptionConfig-version.cmake /workspace/devel/share/hsr_perception/cmake/hsr_perceptionConfig-version.cmake
+/workspace/devel/.private/hsr_perception/lib/python3/dist-packages/hsr_perception/__init__.py /workspace/devel/lib/python3/dist-packages/hsr_perception/__init__.py
+/workspace/devel/.private/hsr_perception/lib/pkgconfig/hsr_perception.pc /workspace/devel/lib/pkgconfig/hsr_perception.pc

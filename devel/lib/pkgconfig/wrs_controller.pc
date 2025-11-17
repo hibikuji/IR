@@ -1,0 +1,1 @@
+/workspace/devel/.private/wrs_controller/lib/pkgconfig/wrs_controller.pc

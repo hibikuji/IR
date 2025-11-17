@@ -1,0 +1,1 @@
+/workspace/devel/.private/detector_msgs/share/common-lisp/ros/detector_msgs/msg/BBoxArray.lisp

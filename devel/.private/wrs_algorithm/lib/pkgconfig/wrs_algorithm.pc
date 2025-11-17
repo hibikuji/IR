@@ -1,0 +1,8 @@
+prefix=/workspace/devel/.private/wrs_algorithm
+
+Name: wrs_algorithm
+Description: Description of wrs_algorithm
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

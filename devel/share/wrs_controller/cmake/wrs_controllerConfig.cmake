@@ -1,0 +1,1 @@
+/workspace/devel/.private/wrs_controller/share/wrs_controller/cmake/wrs_controllerConfig.cmake

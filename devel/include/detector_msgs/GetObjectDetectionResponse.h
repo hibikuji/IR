@@ -1,0 +1,1 @@
+/workspace/devel/.private/detector_msgs/include/detector_msgs/GetObjectDetectionResponse.h

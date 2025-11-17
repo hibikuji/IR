@@ -1,0 +1,6 @@
+wrs_algorithm21
+/workspace/devel/.private/wrs_algorithm/cmake.lock /workspace/devel/./cmake.lock
+/workspace/devel/.private/wrs_algorithm/share/wrs_algorithm/cmake/wrs_algorithmConfig-version.cmake /workspace/devel/share/wrs_algorithm/cmake/wrs_algorithmConfig-version.cmake
+/workspace/devel/.private/wrs_algorithm/share/wrs_algorithm/cmake/wrs_algorithmConfig.cmake /workspace/devel/share/wrs_algorithm/cmake/wrs_algorithmConfig.cmake
+/workspace/devel/.private/wrs_algorithm/lib/python3/dist-packages/wrs_algorithm/__init__.py /workspace/devel/lib/python3/dist-packages/wrs_algorithm/__init__.py
+/workspace/devel/.private/wrs_algorithm/lib/pkgconfig/wrs_algorithm.pc /workspace/devel/lib/pkgconfig/wrs_algorithm.pc

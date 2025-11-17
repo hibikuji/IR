@@ -1,0 +1,1 @@
+/workspace/devel/.private/hsr_perception/share/hsr_perception/cmake/hsr_perceptionConfig.cmake
