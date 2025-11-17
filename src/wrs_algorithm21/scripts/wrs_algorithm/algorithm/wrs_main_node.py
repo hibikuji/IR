@@ -412,27 +412,38 @@ class WrsMainController(object):
             "xc": [ [pos_xc, 2.5, 135],   [pos_xc, 2.9, 135],  [pos_xc, 3.3, 90 ]]
         }
 
+        y_ranges = [[2.2, 2.7], [2.7, 3.1], [3.1, 3.5]]
+        current_y_min, current_y_max = y_ranges[current_stp]
+
         # posがxa,xb,xcのラインに近い場合は候補から削除
         is_to_xa = True
         is_to_xb = True
         is_to_xc = True
+
+        safety_margin = 0.2
+
         for bbox in pos_bboxes:
             pos_x = bbox.x
+            pos_y = bbox.y
+
+            if not (current_y_min < pos_y < current_y_max):
+                continue
+
+            rospy.loginfo("Checking obstacle at (x=%.2f, y=%.2f) for step %d", pos_x, pos_y, current_stp)
             # TODO デバッグ時にコメントアウトを外す
-            # rospy.loginfo("detected object obj.x = {:.2f}".format(bbox.x))
 
             # NOTE Hint:ｙ座標次第で無視してよいオブジェクトもある。
-            if pos_x < pos_xa + (interval/2):
+            if (pos_xa - safety_margin < pos_x < pos_xa + safety_margin):
                 is_to_xa = False
-                # rospy.loginfo("is_to_xa=False")
+                rospy.loginfo("is_to_xa=False")
                 continue
-            elif pos_x < pos_xb + (interval/2):
+            if (pos_xb - safety_margin < pos_x < pos_xb + safety_margin):
                 is_to_xb = False
-                # rospy.loginfo("is_to_xb=False")
+                rospy.loginfo("is_to_xb=False")
                 continue
-            elif pos_x < pos_xc + (interval/2):
+            if (pos_xc - safety_margin < pos_x < pos_xc + safety_margin):
                 is_to_xc = False
-                # rospy.loginfo("is_to_xc=False")
+                rospy.loginfo("is_to_xc=False")
                 continue
 
         x_line = None   # xa,xb,xcいずれかのリストが入る
