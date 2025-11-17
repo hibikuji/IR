@@ -419,6 +419,9 @@ class WrsMainController(object):
         is_to_xa = True
         is_to_xb = True
         is_to_xc = True
+
+        safety_margin = 0.2
+
         for bbox in pos_bboxes:
             pos_x = bbox.x
             pos_y = bbox.y
@@ -430,17 +433,17 @@ class WrsMainController(object):
             # TODO デバッグ時にコメントアウトを外す
 
             # NOTE Hint:ｙ座標次第で無視してよいオブジェクトもある。
-            if pos_x < pos_xa + (interval/2):
+            if (pos_xa - safety_margin < pos_x < pos_xa + safety_margin):
                 is_to_xa = False
-                # rospy.loginfo("is_to_xa=False")
+                rospy.loginfo("is_to_xa=False")
                 continue
-            elif pos_x < pos_xb + (interval/2):
+            if (pos_xb - safety_margin < pos_x < pos_xb + safety_margin):
                 is_to_xb = False
-                # rospy.loginfo("is_to_xb=False")
+                rospy.loginfo("is_to_xb=False")
                 continue
-            elif pos_x < pos_xc + (interval/2):
+            if (pos_xc - safety_margin < pos_x < pos_xc + safety_margin):
                 is_to_xc = False
-                # rospy.loginfo("is_to_xc=False")
+                rospy.loginfo("is_to_xc=False")
                 continue
 
         x_line = None   # xa,xb,xcいずれかのリストが入る
