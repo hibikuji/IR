@@ -500,6 +500,42 @@ class WrsMainController(object):
             rospy.loginfo("select default waypoint")
 
         return x_line[current_stp]
+    
+    def open_all_drawers(self):
+        """
+        開始時にdrawerの3つの引き出しを全て開ける。
+        ただし、各ハンドルの座標は調べる必要あり。
+        """
+        rospy.loginfo("#### Opening All Drawers ####")
+        
+        #引き出し前へ移動
+        self.goto_name("stair_like_drawer")
+        self.change_pose("look_at_near_floor")
+
+        # --- 1. 左の引き出し(Drawer Left / Shape items) ---
+        #以下のhandle_****達は書き換える必要あり
+        handle_left_x = 0.44   # ロボットからの距離（奥行）
+        handle_left_y = 0.20   # 左右（左がプラスの場合）
+        handle_left_z = 0.40   # 高さ
+        rospy.loginfo("Opening Drawer Left...")
+        self.pull_out_trofast(handle_left_x, handle_left_y, handle_left_z, -90, 0, 0)
+
+        # --- 2. 上の引き出し (Drawer Top / Tools) ---
+        handle_top_x = 0.44
+        handle_top_y = -0.10   
+        handle_top_z = 0.80    # 高い位置
+        rospy.loginfo("Opening Drawer Top...")
+        self.pull_out_trofast(handle_top_x, handle_top_y, handle_top_z, -90, 0, 0)
+
+        # --- 3. 下の引き出し (Drawer Bottom / Tools) ---
+        handle_bottom_x = 0.44
+        handle_bottom_y = -0.10
+        handle_bottom_z = 0.50 # 低い位置
+        rospy.loginfo("Opening Drawer Bottom...")
+        self.pull_out_trofast(handle_bottom_x, handle_bottom_y, handle_bottom_z, -90, 0, 0)
+        
+        rospy.loginfo("All drawers are open.")
+
 
     def execute_task1(self):
         """
@@ -530,19 +566,20 @@ class WrsMainController(object):
                     rospy.logwarn("Cannot determine object to grasp. Grasping is aborted.")
                     #continue
                     break
+
                 label = graspable_obj["label"]
                 grasp_bbox = graspable_obj["bbox"]
                 # TODO ラベル名を確認するためにコメントアウトを外す
-                # rospy.loginfo("grasp the " + label)
+                rospy.loginfo("grasp the " + label)
 
                 # 把持対象がある場合は把持関数実施
                 grasp_pos = self.get_grasp_coordinate(grasp_bbox)
                 self.change_pose("grasp_on_table")
-                
                 is_success = self.exec_graspable_method(grasp_pos, label)
                 self.change_pose("all_neutral")
 
                 if not is_success:
+                    rospy.logwarn("Grasp failed. Retrying or skipping.")
                     break
 
                 # binに入れる
@@ -627,6 +664,9 @@ class WrsMainController(object):
         全てのタスクを実行する
         """
         self.change_pose("all_neutral")
+        
+        self.open_all_drawers()
+
         self.execute_task1()
         self.execute_task2a()
         self.execute_task2b()
