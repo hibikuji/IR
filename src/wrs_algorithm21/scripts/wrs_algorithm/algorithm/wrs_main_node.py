@@ -269,8 +269,9 @@ class WrsMainController(object):
         """
         #TODO: 関数は未完成です。引数のinstructionを利用すること
         rospy.loginfo("[extract_target_obj_and_person] instruction:"+  instruction)
-        target_obj    = "apple"
-        target_person = "right"
+        instruction_words = instruction.split()
+        target_obj    = instruction_words[0]
+        target_person = instruction_words[3]
 
         return target_obj, target_person
 
@@ -483,7 +484,12 @@ class WrsMainController(object):
 
         # target_personの前に持っていく
         self.change_pose("look_at_near_floor")
-        self.goto_name("person_b")    # TODO: 配達先が固定されているので修正
+
+        if target_person == "right":
+            self.goto_name("person_b")    # TODO: 配達先が固定されているので修正
+        else:
+            self.goto_name("person_a")
+            
         self.change_pose("deliver_to_human")
         rospy.sleep(10.0)
         gripper.command(1)
