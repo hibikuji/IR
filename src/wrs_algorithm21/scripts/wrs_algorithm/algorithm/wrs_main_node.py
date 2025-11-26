@@ -79,6 +79,7 @@ class WrsMainController(object):
             "Flat screwdriver", "Clear box", "Box lid", "Footlocker"
         ]
 
+        self.obstacle_memory = []
 
         # ROS通信関連の初期化
         tf_from_bbox_srv_name = "set_tf_from_bbox"
@@ -422,8 +423,156 @@ class WrsMainController(object):
         gripper.command(1)
         self.change_pose("all_neutral")
 
+    def get_dist_point_to_segment(self, p, a, b):
+        """
+        点pと、線分abの最短距離を計算する
+        p, a, b はそれぞれ [x, y] のリストまたはオブジェクト
+        """
+        # ベクトル ap, ab
+        ap = [p[0] - a[0], p[1] - a[1]]
+        ab = [b[0] - a[0], b[1] - a[1]]
+        
+        # abの長さの2乗
+        len_ab_sq = ab[0]**2 + ab[1]**2
+        if len_ab_sq == 0:
+            # aとbが同じ場所にある場合
+            return math.sqrt(ap[0]**2 + ap[1]**2)
+
+        # 内積を使って、点pから線分への垂線の足の位置tを求める
+        t = (ap[0]*ab[0] + ap[1]*ab[1]) / len_ab_sq
+        
+        # tを0~1の範囲に収める（線分の内側に限定）
+        t = max(0, min(1, t))
+        
+        # 最短距離となる線分上の点 closest
+        closest = [a[0] + t*ab[0], a[1] + t*ab[1]]
+        
+        # pとclosestの距離を返す
+        return math.sqrt((p[0] - closest[0])**2 + (p[1] - closest[1])**2)
+
+    def is_path_safe(self, start_pos, target_pos):
+        """
+        startからtargetへの移動ルートが安全か判定する
+        """
+        # ロボットの幅(半径) + 余裕。
+        # 0.35mあれば、直径0.7mの筒が通れるかチェックすることになる
+        safety_radius = 0.35 
+
+        for obs in self.obstacle_memory:
+            obs_pos = [obs.x, obs.y]
+            dist = self.get_dist_point_to_segment(obs_pos, start_pos, target_pos)
+            
+            # 障害物がルートに近すぎるならNG
+            if dist < safety_radius:
+                return False
+        return True
+
     def execute_avoid_blocks(self):
         # blockを避ける
+        """
+        2手先読み + 経路干渉チェックを行う高度な回避
+        """
+        rospy.loginfo("#### Start Advanced Lookahead Avoidance ####")
+
+        # 移動目標地点のX座標定義
+        # start -> step1 -> step2 -> step3(goal)
+        x_steps = [1.7, 2.3, 2.9]
+        
+        # 探索するY座標の候補（0.1m刻みで細かく）
+        # 2.0m 〜 3.5m の範囲
+        candidate_ys = [y * 0.1 for y in range(20, 36)]
+
+        # 現在地を取得
+        current_pose = self.get_relative_coordinate("map", "base_footprint")
+        current_x = current_pose.translation.x
+        current_y = current_pose.translation.y
+
+        for i, target_x in enumerate(x_steps):
+            rospy.loginfo(f"--- Planning for Step {i+1} (Target X={target_x}) ---")
+
+            look_angles = [-0.6, -0.35] 
+
+            # 1. 2つの角度で見て記録 
+            for angle in look_angles:
+                # 首を動かす
+                whole_body.move_to_joint_positions({"head_tilt_joint": angle, "head_pan_joint": 0.0})
+                rospy.sleep(0.8) # ブレが収まるのを待つ
+
+                # 認識実行
+                detected_objs = self.get_latest_detection()
+                
+                # 記憶に追加
+                for bbox in detected_objs.bboxes:
+                    # スコアが低い誤検出は無視
+                    if bbox.score < 0.2: continue
+
+                    # 座標変換
+                    pos = self.get_grasp_coordinate(bbox)
+                    
+                    # 重複チェック（既存の記憶と近すぎるなら追加しない）
+                    is_known = False
+                    for mem in self.obstacle_memory:
+                        dist = math.sqrt((mem.x - pos.x)**2 + (mem.y - pos.y)**2)
+                        # 20cm以内の誤差なら同じ物体とみなす
+                        if dist < 0.1: 
+                            is_known = True
+                            break
+                    
+                    if not is_known:
+                        self.obstacle_memory.append(pos)
+                        rospy.loginfo(f"New Obstacle found at angle {angle}: ({pos.x:.2f}, {pos.y:.2f})")
+
+            # 2. 【2手先読み】ルートプランニング
+            # 「現在地 -> 次(Step1) -> その次(Step2)」が成立するルートを探す
+            
+            if i + 1 < len(x_steps):
+                next_target_x = x_steps[i + 1]
+            else:
+                next_target_x = target_x + 0.5
+            
+            best_y = None
+            min_cost = 999.0 # 移動コスト（少ないほうがいい）
+
+            # 全ての「次のY候補」について調査
+            for y1 in candidate_ys:
+                # パス1: 現在地 -> 候補1 が安全か？
+                if not self.is_path_safe([current_x, current_y], [target_x, y1]):
+                    continue # ダメなら次の候補へ
+
+                # もしこれが最後のステップなら、Step1に行けるだけでOK
+                if i == len(x_steps) - 1:
+                    cost = abs(y1 - current_y) # 横移動が少ないものを優先
+                    if cost < min_cost:
+                        min_cost = cost
+                        best_y = y1
+                    continue
+
+                # まだ先がある場合、Step2へのルートがあるかチェック（詰み防止）
+                can_go_further = False
+                for y2 in candidate_ys:
+                    # パス2: 候補1 -> 候補2 が安全か？
+                    if self.is_path_safe([target_x, y1], [next_target_x, y2]):
+                        can_go_further = True
+                        break # 一つでも行ける未来があればOK
+                
+                if can_go_further:
+                    # 未来があるルートの中で、最も移動量が少ないものを記録
+                    cost = abs(y1 - current_y)
+                    if cost < min_cost:
+                        min_cost = cost
+                        best_y = y1
+
+            # 3. 移動実行
+            if best_y is not None:
+                rospy.loginfo(f"Valid Path Found! Moving to Y={best_y:.2f}")
+                self.goto_pos([target_x, best_y, 90])
+                # 現在地情報を更新（goto_posは誤差が出るのでtfで取り直しても良いが、ここでは目標値をセット）
+                current_x = target_x
+                current_y = best_y
+            else:
+                rospy.logerr("STUCK! No valid path found. Stopping task.")
+                break
+        """
         for i in range(3):
             # 毎回必ず床を見るようにする。
             self.change_pose("look_at_near_floor")
@@ -446,6 +595,7 @@ class WrsMainController(object):
             # TODO メッセージを確認するためコメントアウトを外す
             # rospy.loginfo(waypoint)
             self.goto_pos(waypoint)
+        """
 
     def select_next_waypoint(self, current_stp, pos_bboxes):
         """
