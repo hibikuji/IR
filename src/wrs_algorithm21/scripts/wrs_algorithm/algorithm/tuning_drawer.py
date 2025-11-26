@@ -19,7 +19,7 @@ def main():
         print("試したい座標を入力してください (例: 0.44 0.2 0.4)")
         print("終了するには 'q' を入力")
         
-        user_input = raw_input("x y z >> ") # Python 3なら input()
+        user_input = input("x y z >> ") # Python 3なら input()
         
         if user_input == 'q':
             break
