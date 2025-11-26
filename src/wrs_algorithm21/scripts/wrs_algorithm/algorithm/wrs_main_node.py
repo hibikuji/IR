@@ -579,7 +579,10 @@ class WrsMainController(object):
                 self.change_pose("all_neutral")
 
                 if not is_success:
-                    rospy.logwarn("Grasp failed. Retrying or skipping.")
+                    # ここで失敗した物体を除外する
+                    rospy.logwarn("Failed to grasp [%s]", label)
+                    if label not in self.IGNORE_LIST:
+                        self.IGNORE_LIST.append(label)
                     break
 
                 # binに入れる
