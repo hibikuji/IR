@@ -19,6 +19,7 @@ from detector_msgs.srv import (
     GetObjectDetection, GetObjectDetectionRequest)
 from wrs_algorithm.util import omni_base, whole_body, gripper
 import math
+import re
 
 
 class WrsMainController(object):
@@ -47,36 +48,36 @@ class WrsMainController(object):
         tool_cnt = 0
 
         self.ORIENTATION_ITEM = [
-            "Large marker", "Small marker", "Fork", "Spoon"
+            "large_marker", "small_marker", "fork", "spoon"
         ]
         self.FOOD_ITEM = [
-            "Cheez-it cracker box", "Domino suger box", "Jell-o chocolate pudding box",
-            "Jell-o strawberry gelatin box", "Spam potted meat can", "Master chef coffee can",
-            "Starkist tuna fish can", "Pringles chips can", "French's mustard bottle",
-            "Tomato soup can", "Plastic banana", "Plastic strawberry",
-            "Plastic apple", "Plastic lemon", "Plastic peach", "Plastic pear",
-            "Plastic orange", "Plastic plum"
+            "cheez-it_cracker_box", "domino_suger box", "jell-o_chocolate_pudding_box",
+            "jell-o_strawberry_gelatin_box", "spam_potted_meat_can", "master_chef_coffee_can",
+            "starkist_tuna_fish_can", "pringles_chips_can", "french's_mustard_bottle",
+            "tomato_soup_can", "plastic_banana", "plastic_strawberry",
+            "plastic_apple", "plastic_lemon", "plastic_peach", "plastic_pear",
+            "plastic_orange", "plastic_plum"
         ]
         self.KITCHEN_ITEM = [
-            "Windex Spray bottle", "Srub cleanser bottle", "Scotch brite dobie sponge",
-            "Pitcher base", "Pitcher lid", "Plate", "Bowl", "Fork", "Spoon", "Spatula",
-            "Wine glass", "Mug"
+            "windex_spray_bottle", "srub_cleanser_bottle", "scotch_brite_dobie_sponge",
+            "pitcher_base", "pitcher_lid", "plate", "bowl", "fork", "spoon", "spatula",
+            "wine_glass", "mug"
         ]
         self.TOOL_ITEM = [
-            "Large marker", "Small marker", "Keys (from the Padlock)", "Bolt and nut", "Clamps"
+            "large_marker", "small_marker", "keys", "bolt_and_nut", "clamps"
         ]
         self.SHAPE_ITEM = [
-            "Credit card blank", "Mini soccer ball", "Soft ball", "Baseball", "Tennis ball",
-            "Racquetball", "Golf ball", "Marbles", "Cups", "Foam bridk", "Dice", "Chain"
+            "credit_card_blank", "mini_soccer_ball", "soft_ball", "baseball", "tennis_ball",
+            "racquetball", "golf_ball", "marbles", "cups", "foam_bridk", "dice", "chain"
         ]
         self.TASK_ITEM = [
-            "Rubik's cube", "Colored wood blocks", "9-peg-hole test", "Toy ariplane", "Lego duplo",
-            "Magazine", "Black t-shirt", "Timer"
+            "rubik's_cube", "colored_wood_blocks", "9-peg-hole_test", "toy_airplane", "lego_duplo",
+            "magazine", "black_t-shirt", "timer"
         ]
         self.DISCARD = [
-            "Skillet", "Skillet lid", "Table cloth", "Hammer", "Adjustable wrench", "Wood block",
-            "Power drill", "Washers", "Nails", "Knife", "Scissors", "Padlock", "Phillips screwdriver",
-            "Flat screwdriver", "Clear box", "Box lid", "Footlocker"
+            "skillet", "skillet_lid", "table_cloth", "hammer", "adjustable_wrench", "wood_block",
+            "power_drill", "washers", "nails", "knife", "scissors", "padlock", "phillips_screwdriver",
+            "flat_screwdriver", "clear_box", "box_lid", "footlocker"
         ]
 
 
@@ -306,6 +307,71 @@ class WrsMainController(object):
         gripper.command(0)
         whole_body.move_end_effector_pose(grasp_back_safe["x"], grasp_back_safe["y"], grasp_back_safe["z"], yaw, pitch, roll)
 
+    def get_most_likely_category(self, label):
+        label_words = label.split('_')
+
+        for ans_label in self.ORIENTATION_ITEM:
+            for label_word in label_words:
+                match = re.search(label_word, ans_label, re.IGNORECASE)
+                if match:
+                    pass
+                else:
+                    break
+            else:
+                return "ORIENTATION_ITEM"
+
+        for ans_label in self.FOOD_ITEM:
+            for label_word in label_words:
+                match = re.search(label_word, ans_label, re.IGNORECASE)
+                if match:
+                    pass
+                else:
+                    break
+            else:
+                return "FOOD_ITEM"
+            
+        for ans_label in self.KITCHEN_ITEM:
+            for label_word in label_words:
+                match = re.search(label_word, ans_label, re.IGNORECASE)
+                if match:
+                    pass
+                else:
+                    break
+            else:
+                return "KITCHEN_ITEM"
+
+        for ans_label in self.TOOL_ITEM:
+            for label_word in label_words:
+                match = re.search(label_word, ans_label, re.IGNORECASE)
+                if match:
+                    pass
+                else:
+                    break
+            else:
+                return "TOOL_ITEM"
+
+        for ans_label in self.SHAPE_ITEM:
+            for label_word in label_words:
+                match = re.search(label_word, ans_label, re.IGNORECASE)
+                if match:
+                    pass
+                else:
+                    break
+            else:
+                return "SHAPE_ITEM"
+
+        for ans_label in self.TASK_ITEM:
+            for label_word in label_words:
+                match = re.search(label_word, ans_label, re.IGNORECASE)
+                if match:
+                    pass
+                else:
+                    break
+            else:
+                return "TASK_ITEM"
+        
+        return "UNKNOWN"
+
     def grasp_from_front_side(self, grasp_pos):
         """
         正面把持を行う
@@ -511,7 +577,6 @@ class WrsMainController(object):
         #引き出し前へ移動
         self.goto_name("stair_like_drawer")
         self.change_pose("look_at_near_floor")
-
         # --- 1. 左の引き出し(Drawer Left / Shape items) ---
         #以下のhandle_****達は書き換える必要あり
         handle_left_x = 0.44   # ロボットからの距離（奥行）
@@ -585,37 +650,39 @@ class WrsMainController(object):
                         self.IGNORE_LIST.append(label)
                     break
 
+                most_likely_label = self.get_most_likely_category(label)
+                rospy.logwarn("検出ラベル[%s]のもっともらしいカテゴリは [%s]", label, most_likely_label)
                 # binに入れる
-                if label in self.ORIENTATION_ITEM:
+                if most_likely_label == "ORIENTATION_ITEM":
                     rospy.loginfo("カテゴリ [Orientation] -> Container_B")
-                    self.put_in_place("Container_B", "put_in_orientation_pose")
-                elif label in self.FOOD_ITEM:
+                    self.put_in_place("container_B", "put_in_orientation_pose")
+                elif most_likely_label == "FOOD_ITEM":
                     rospy.loginfo("カテゴリ [Food] -> Tray A / Tray B")
                     if food_cnt % 2 == 0:
-                        self.put_in_place("Tray_A", "put_in_tray_pose")
+                        self.put_in_place("tray_A", "put_in_tray_pose")
                     else:
-                        self.put_in_place("Tray_B", "put_in_tray_pose")
+                        self.put_in_place("tray_B", "put_in_tray_pose")
                     food_cnt += 1 # Food専用カウンターを増やす
-                elif label in self.KITCHEN_ITEM:
+                elif most_likely_label == "KITCHEN_ITEM":
                     # カテゴリ: Kitchen items -> Container_A 
                     rospy.loginfo("カテゴリ [Kitchen] -> Container A")
-                    self.put_in_place("Container_A", "put_in_container_pose")
+                    self.put_in_place("container_A", "put_in_container_pose")
 
-                elif label in self.TOOL_ITEM:
+                elif most_likely_label == "TOOL_ITEM":
                     # カテゴリ: Tools -> Drawer_top / Drawer_bottom 
                     rospy.loginfo("カテゴリ [Tools] -> Drawer Top / Bottom")
                     if tool_cnt % 2 == 0:
-                        self.put_in_place("Drawer_top", "put_in_drawer_pose")
+                        self.put_in_place("drawer_top", "put_in_drawer_pose")
                     else:
-                        self.put_in_place("Drawer_bottom", "put_in_drawer_pose")
+                        self.put_in_place("drawer_bottom", "put_in_drawer_pose")
                     tool_cnt += 1 # Tool専用カウンターを増やす
 
-                elif label in self.SHAPE_ITEM:
+                elif most_likely_label == "SHAPE_ITEM":
                     # カテゴリ: Shape items -> Drawer_left 
                     rospy.loginfo("カテゴリ [Shape] -> Drawer left")
-                    self.put_in_place("Drawer_left", "put_in_drawer_pose")
+                    self.put_in_place("drawer_left", "put_in_drawer_pose")
 
-                elif label in self.TASK_ITEM:
+                elif most_likely_label == "TASK_ITEM":
                     # カテゴリ: Task items -> Bin_A 
                     rospy.loginfo("カテゴリ [Task] -> Bin A")
                     self.put_in_place("bin_a_place", "put_in_bin") # 既存のbin_a_placeを使用
@@ -624,7 +691,7 @@ class WrsMainController(object):
                     # カテゴリ: Unknown objects -> Bin_B 
                     rospy.logwarn("ラベル [%s] は分類外です。[Unknown] として Bin B に置きます。", label)
                     self.put_in_place("bin_b_place", "put_in_bin") # 既存のbin_b_placeを使用
-                
+
 
     def execute_task2a(self):
         """
@@ -668,7 +735,7 @@ class WrsMainController(object):
         """
         self.change_pose("all_neutral")
         
-        self.open_all_drawers()
+        ##self.open_all_drawers() #テストのため一回無効
 
         self.execute_task1()
         self.execute_task2a()
