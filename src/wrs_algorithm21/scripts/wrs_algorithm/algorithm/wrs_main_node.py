@@ -425,9 +425,23 @@ class WrsMainController(object):
     def execute_avoid_blocks(self):
         # blockを避ける
         for i in range(3):
+            # 毎回必ず床を見るようにする。
+            self.change_pose("look_at_near_floor")
+            rospy.sleep(0.5)
+
             detected_objs = self.get_latest_detection()
             bboxes = detected_objs.bboxes
-            pos_bboxes = [self.get_grasp_coordinate(bbox) for bbox in bboxes]
+            
+            # スコアが低い(0.2未満など)誤検出は無視するフィルタリングを追加
+            valid_bboxes = [bbox for bbox in bboxes if bbox.score > 0.2]
+
+            # 座標変換を行う
+            pos_bboxes = []
+            for bbox in valid_bboxes:
+                # 処理高速化: 明らかに遠くにあるものや関係ないものはtf変換しないなどの工夫も可能だが
+                # ここでは安全重視で全て変換する
+                pos_bboxes.append(self.get_grasp_coordinate(bbox))
+
             waypoint = self.select_next_waypoint(i, pos_bboxes)
             # TODO メッセージを確認するためコメントアウトを外す
             # rospy.loginfo(waypoint)
@@ -449,7 +463,7 @@ class WrsMainController(object):
             "xc": [ [pos_xc, 2.5, 135],   [pos_xc, 2.9, 135],  [pos_xc, 3.3, 90 ]]
         }
 
-        y_ranges = [[2.2, 2.7], [2.7, 3.1], [3.1, 3.5]]
+        y_ranges = [[2.0, 2.8], [2.5, 3.2], [2.9, 3.6]]
         current_y_min, current_y_max = y_ranges[current_stp]
 
         # posがxa,xb,xcのラインに近い場合は候補から削除
@@ -457,12 +471,13 @@ class WrsMainController(object):
         is_to_xb = True
         is_to_xc = True
 
-        safety_margin = 0.2
+        safety_margin = 0.28
 
         for bbox in pos_bboxes:
             pos_x = bbox.x
             pos_y = bbox.y
 
+            # 今から通過しようとする物体以外は一旦無視する
             if not (current_y_min < pos_y < current_y_max):
                 continue
 
