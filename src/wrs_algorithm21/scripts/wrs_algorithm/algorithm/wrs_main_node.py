@@ -43,6 +43,43 @@ class WrsMainController(object):
         self.coordinates = self.load_json(self.get_path(["config", "coordinates.json"]))
         self.poses       = self.load_json(self.get_path(["config", "poses.json"]))
 
+        food_cnt = 0
+        tool_cnt = 0
+
+        self.ORIENTATION_ITEM = [
+            "Large marker", "Small marker", "Fork", "Spoon"
+        ]
+        self.FOOD_ITEM = [
+            "Cheez-it cracker box", "Domino suger box", "Jell-o chocolate pudding box",
+            "Jell-o strawberry gelatin box", "Spam potted meat can", "Master chef coffee can",
+            "Starkist tuna fish can", "Pringles chips can", "French's mustard bottle",
+            "Tomato soup can", "Plastic banana", "Plastic strawberry",
+            "Plastic apple", "Plastic lemon", "Plastic peach", "Plastic pear",
+            "Plastic orange", "Plastic plum"
+        ]
+        self.KITCHEN_ITEM = [
+            "Windex Spray bottle", "Srub cleanser bottle", "Scotch brite dobie sponge",
+            "Pitcher base", "Pitcher lid", "Plate", "Bowl", "Fork", "Spoon", "Spatula",
+            "Wine glass", "Mug"
+        ]
+        self.TOOL_ITEM = [
+            "Large marker", "Small marker", "Keys (from the Padlock)", "Bolt and nut", "Clamps"
+        ]
+        self.SHAPE_ITEM = [
+            "Credit card blank", "Mini soccer ball", "Soft ball", "Baseball", "Tennis ball",
+            "Racquetball", "Golf ball", "Marbles", "Cups", "Foam bridk", "Dice", "Chain"
+        ]
+        self.TASK_ITEM = [
+            "Rubik's cube", "Colored wood blocks", "9-peg-hole test", "Toy ariplane", "Lego duplo",
+            "Magazine", "Black t-shirt", "Timer"
+        ]
+        self.DISCARD = [
+            "Skillet", "Skillet lid", "Table cloth", "Hammer", "Adjustable wrench", "Wood block",
+            "Power drill", "Washers", "Nails", "Knife", "Scissors", "Padlock", "Phillips screwdriver",
+            "Flat screwdriver", "Clear box", "Box lid", "Footlocker"
+        ]
+
+
         # ROS通信関連の初期化
         tf_from_bbox_srv_name = "set_tf_from_bbox"
         rospy.wait_for_service(tf_from_bbox_srv_name)
@@ -463,6 +500,42 @@ class WrsMainController(object):
             rospy.loginfo("select default waypoint")
 
         return x_line[current_stp]
+    
+    def open_all_drawers(self):
+        """
+        開始時にdrawerの3つの引き出しを全て開ける。
+        ただし、各ハンドルの座標は調べる必要あり。
+        """
+        rospy.loginfo("#### Opening All Drawers ####")
+        
+        #引き出し前へ移動
+        self.goto_name("stair_like_drawer")
+        self.change_pose("look_at_near_floor")
+
+        # --- 1. 左の引き出し(Drawer Left / Shape items) ---
+        #以下のhandle_****達は書き換える必要あり
+        handle_left_x = 0.44   # ロボットからの距離（奥行）
+        handle_left_y = 0.20   # 左右（左がプラスの場合）
+        handle_left_z = 0.40   # 高さ
+        rospy.loginfo("Opening Drawer Left...")
+        self.pull_out_trofast(handle_left_x, handle_left_y, handle_left_z, -90, 0, 0)
+
+        # --- 2. 上の引き出し (Drawer Top / Tools) ---
+        handle_top_x = 0.44
+        handle_top_y = -0.10   
+        handle_top_z = 0.80    # 高い位置
+        rospy.loginfo("Opening Drawer Top...")
+        self.pull_out_trofast(handle_top_x, handle_top_y, handle_top_z, -90, 0, 0)
+
+        # --- 3. 下の引き出し (Drawer Bottom / Tools) ---
+        handle_bottom_x = 0.44
+        handle_bottom_y = -0.10
+        handle_bottom_z = 0.50 # 低い位置
+        rospy.loginfo("Opening Drawer Bottom...")
+        self.pull_out_trofast(handle_bottom_x, handle_bottom_y, handle_bottom_z, -90, 0, 0)
+        
+        rospy.loginfo("All drawers are open.")
+
 
     def execute_task1(self):
         """
@@ -475,7 +548,8 @@ class WrsMainController(object):
             ("long_table_r", "look_at_tall_table"),
         ]
 
-        total_cnt = 0
+        food_cnt = 0
+        tool_cnt = 0
         for plc, pose in hsr_position:
             # for _ in range(self.DETECT_CNT):
             while True:
@@ -492,6 +566,7 @@ class WrsMainController(object):
                     rospy.logwarn("Cannot determine object to grasp. Grasping is aborted.")
                     #continue
                     break
+
                 label = graspable_obj["label"]
                 grasp_bbox = graspable_obj["bbox"]
                 # TODO ラベル名を確認するためにコメントアウトを外す
@@ -500,7 +575,6 @@ class WrsMainController(object):
                 # 把持対象がある場合は把持関数実施
                 grasp_pos = self.get_grasp_coordinate(grasp_bbox)
                 self.change_pose("grasp_on_table")
-                
                 is_success = self.exec_graspable_method(grasp_pos, label)
                 self.change_pose("all_neutral")
 
@@ -512,9 +586,45 @@ class WrsMainController(object):
                     break
 
                 # binに入れる
-                if total_cnt % 2 == 0:  self.put_in_place("bin_a_place", "put_in_bin")
-                else:  self.put_in_place("bin_b_place", "put_in_bin")
-                total_cnt += 1
+                if label in self.ORIENTATION_ITEM:
+                    rospy.loginfo("カテゴリ [Orientation] -> Container_B")
+                    self.put_in_place("Container_B", "put_in_orientation_pose")
+                elif label in self.FOOD_ITEM:
+                    rospy.loginfo("カテゴリ [Food] -> Tray A / Tray B")
+                    if food_cnt % 2 == 0:
+                        self.put_in_place("Tray_A", "put_in_tray_pose")
+                    else:
+                        self.put_in_place("Tray_B", "put_in_tray_pose")
+                    food_cnt += 1 # Food専用カウンターを増やす
+                elif label in self.KITCHEN_ITEM:
+                    # カテゴリ: Kitchen items -> Container_A 
+                    rospy.loginfo("カテゴリ [Kitchen] -> Container A")
+                    self.put_in_place("Container_A", "put_in_container_pose")
+
+                elif label in self.TOOL_ITEM:
+                    # カテゴリ: Tools -> Drawer_top / Drawer_bottom 
+                    rospy.loginfo("カテゴリ [Tools] -> Drawer Top / Bottom")
+                    if tool_cnt % 2 == 0:
+                        self.put_in_place("Drawer_top", "put_in_drawer_pose")
+                    else:
+                        self.put_in_place("Drawer_bottom", "put_in_drawer_pose")
+                    tool_cnt += 1 # Tool専用カウンターを増やす
+
+                elif label in self.SHAPE_ITEM:
+                    # カテゴリ: Shape items -> Drawer_left 
+                    rospy.loginfo("カテゴリ [Shape] -> Drawer left")
+                    self.put_in_place("Drawer_left", "put_in_drawer_pose")
+
+                elif label in self.TASK_ITEM:
+                    # カテゴリ: Task items -> Bin_A 
+                    rospy.loginfo("カテゴリ [Task] -> Bin A")
+                    self.put_in_place("bin_a_place", "put_in_bin") # 既存のbin_a_placeを使用
+
+                else:
+                    # カテゴリ: Unknown objects -> Bin_B 
+                    rospy.logwarn("ラベル [%s] は分類外です。[Unknown] として Bin B に置きます。", label)
+                    self.put_in_place("bin_b_place", "put_in_bin") # 既存のbin_b_placeを使用
+                
 
     def execute_task2a(self):
         """
@@ -557,6 +667,9 @@ class WrsMainController(object):
         全てのタスクを実行する
         """
         self.change_pose("all_neutral")
+        
+        self.open_all_drawers()
+
         self.execute_task1()
         self.execute_task2a()
         self.execute_task2b()
