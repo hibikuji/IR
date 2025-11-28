@@ -3,6 +3,8 @@
 
 import rospy
 import math
+import gc  # 【追加】メモリ掃除用
+import traceback # 【追加】エラー表示用
 # import tf  <-- これを削除しました
 from wrs_main_node import WrsMainController
 from wrs_algorithm.util import omni_base, whole_body, gripper
@@ -68,6 +70,10 @@ def move_shoulder(angle_deg):
 
 def main():
     rospy.init_node('drawer_tuning_abs')
+
+    # ガベージコレクション有効化
+    gc.enable()
+
     ctrl = WrsMainController()
     
     rospy.loginfo("初期化中... まずは定位置へ移動します")
@@ -75,6 +81,16 @@ def main():
     set_arm_extended()
 
     while not rospy.is_shutdown():
+        # =========================================================
+        # 【重要】メモリリーク対策
+        # wrs_main_node内で無限に追加され続けるリストをここで強制的に空にする
+        # =========================================================
+        ctrl.instruction_list = []
+        ctrl.detection_list   = []
+        
+        # 不要メモリの強制回収
+        gc.collect()
+        
         # ループのたびに「今の絶対座標」を表示する
         curr_x, curr_y, curr_yaw = get_current_pose(ctrl)
         
