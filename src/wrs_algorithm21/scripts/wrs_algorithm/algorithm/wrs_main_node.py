@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-WRS環境内でロボットを動作させるためのメインプログラム
+WRS環境内でロボットを動作させるためのメインプログラム (ONNX対応版)
 """
 
 from __future__ import unicode_literals, print_function, division, absolute_import
@@ -13,12 +13,105 @@ from turtle import pos
 import rospy
 import rospkg
 import tf2_ros
+# 画像処理用に追加
+import cv2
+import numpy as np
+from cv_bridge import CvBridge
+from sensor_msgs.msg import Image
+
 from std_msgs.msg import String
 from detector_msgs.srv import (
     SetTransformFromBBox, SetTransformFromBBoxRequest,
     GetObjectDetection, GetObjectDetectionRequest)
+from detector_msgs.msg import BBox
 from wrs_algorithm.util import omni_base, whole_body, gripper
 import math
+
+
+# ==========================================================
+# 【追加】取っ手専用：YOLO(ONNX)をOpenCVだけで動かすクラス
+# ==========================================================
+class HandleDetectorONNX(object):
+    def __init__(self, model_path, conf_thres=0.4, iou_thres=0.4):
+        self.conf_threshold = conf_thres
+        self.iou_threshold = iou_thres
+        self.net = None
+        
+        # モデルファイルの存在確認とロード
+        if os.path.exists(model_path):
+            rospy.loginfo("【取っ手検出】ONNXモデルをロード中...: " + model_path)
+            try:
+                self.net = cv2.dnn.readNetFromONNX(model_path)
+                # CPUで動作させる設定
+                self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+                self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+                rospy.loginfo("【取っ手検出】モデルロード完了！")
+            except Exception as e:
+                rospy.logerr("【取っ手検出】モデル読み込みエラー: {}".format(e))
+        else:
+            rospy.logerr("【取っ手検出】エラー: {} が見つかりません。".format(model_path))
+
+    def detect(self, cv_image):
+        """画像を受け取って取っ手のBBoxリストを返す"""
+        if self.net is None: return []
+
+        # 1. 画像の前処理 (YOLOv8標準の640x640にリサイズ)
+        input_width, input_height = 640, 640
+        blob = cv2.dnn.blobFromImage(cv_image, 1/255.0, (input_width, input_height), swapRB=True, crop=False)
+        self.net.setInput(blob)
+        
+        # 2. 推論実行
+        outputs = self.net.forward()
+        
+        # 3. 出力の整形
+        # YOLOv8 output: [1, 5, 8400] (batch, xywh+conf, anchors) -> 転置して [8400, 5]
+        outputs = np.array([cv2.transpose(outputs[0])])
+        rows = outputs.shape[1]
+
+        boxes = []
+        scores = []
+
+        # 画像サイズの比率計算
+        img_h, img_w = cv_image.shape[:2]
+        x_factor = img_w / input_width
+        y_factor = img_h / input_height
+
+        for i in range(rows):
+            # output[0][i] = [center_x, center_y, w, h, confidence]
+            confidence = outputs[0][i][4]
+            
+            if confidence >= self.conf_threshold:
+                box = outputs[0][i][0:4]
+                x_center = box[0]
+                y_center = box[1]
+                w = box[2]
+                h = box[3]
+                
+                # 座標を元の画像サイズに戻す
+                left = int((x_center - w / 2) * x_factor)
+                top = int((y_center - h / 2) * y_factor)
+                width = int(w * x_factor)
+                height = int(h * y_factor)
+                
+                boxes.append([left, top, width, height])
+                scores.append(float(confidence))
+
+        # 4. NMS (重なりを除去)
+        indices = cv2.dnn.NMSBoxes(boxes, scores, self.conf_threshold, self.iou_threshold)
+
+        results = []
+        if len(indices) > 0:
+            for i in indices.flatten():
+                bbox = BBox()
+                bbox.label = "handle" # 学習させたクラス名
+                bbox.score = scores[i]
+                bbox.x = boxes[i][0]
+                bbox.y = boxes[i][1]
+                bbox.w = boxes[i][2]
+                bbox.h = boxes[i][3]
+                results.append(bbox)
+                
+        return results
 
 
 class WrsMainController(object):
@@ -86,6 +179,7 @@ class WrsMainController(object):
         rospy.wait_for_service(tf_from_bbox_srv_name)
         self.tf_from_bbox_clt = rospy.ServiceProxy(tf_from_bbox_srv_name, SetTransformFromBBox)
 
+        # 既存の物体認識サービス（そのまま残す）
         obj_detection_name = "detection/get_object_detection"
         rospy.wait_for_service(obj_detection_name)
         self.detection_clt = rospy.ServiceProxy(obj_detection_name, GetObjectDetection)
@@ -95,6 +189,44 @@ class WrsMainController(object):
 
         self.instruction_sub = rospy.Subscriber("/message",    String, self.instruction_cb, queue_size=10)
         self.detection_sub   = rospy.Subscriber("/detect_msg", String, self.detection_cb,   queue_size=10)
+
+        # ==========================================================
+        # 【追加】自前で用意した取っ手認識器の初期化
+        # ==========================================================
+        self.bridge = CvBridge()
+        self.latest_image = None
+        # カメラ画像を常に受け取れるようにサブスクライバを追加
+        rospy.Subscriber("/hsrb/head_rgbd_sensor/rgb/image_rect_color", Image, self.image_cb)
+        
+        # 同じフォルダにある best.onnx を読み込む
+        onnx_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "best.onnx")
+        self.handle_detector = HandleDetectorONNX(onnx_path)
+
+    def image_cb(self, msg):
+        """【追加】カメラ画像を保存するコールバック"""
+        self.latest_image = msg
+
+    # ----------------------------------------------------------
+    #  【追加】取っ手専用の認識関数 (既存の認識とは別物)
+    # ----------------------------------------------------------
+    def detect_handles_onnx(self):
+        """
+        best.onnxを使って取っ手を検出する
+        """
+        if self.latest_image is None:
+            rospy.logwarn("カメラ画像がまだ届いていません")
+            return []
+        
+        try:
+            # ROS画像をOpenCV形式に変換
+            cv_img = self.bridge.imgmsg_to_cv2(self.latest_image, "bgr8")
+            # 自前のONNX検出器で認識
+            return self.handle_detector.detect(cv_img)
+        except Exception as e:
+            rospy.logerr("画像変換または推論でエラー: " + str(e))
+            return []
+
+    # --- 以下、既存の関数 ---
 
     @staticmethod
     def get_path(pathes, package="wrs_algorithm"):
@@ -186,7 +318,7 @@ class WrsMainController(object):
 
     def get_latest_detection(self):
         """
-        最新の認識結果が到着するまで待つ
+        最新の認識結果が到着するまで待つ (既存の物体認識)
         """
         res = self.detection_clt(GetObjectDetectionRequest())
         return res.bboxes
@@ -363,16 +495,18 @@ class WrsMainController(object):
         self.change_pose("all_neutral")
 
     def pull_out_trofast(self, x, y, z, yaw, pitch, roll):
-        # trofastの引き出しを引き出す
-        self.goto_name("stair_like_drawer")
+        # trofastの引き出しを引き出す (座標微調整)
         self.change_pose("grasp_on_table")
-        a = True  # TODO 不要な変数
         gripper.command(1)
-        whole_body.move_end_effector_pose(x, y + self.TROFAST_Y_OFFSET, z, yaw, pitch, roll)
-        whole_body.move_end_effector_pose(x, y, z, yaw, pitch, roll)
-        gripper.command(0)
-        whole_body.move_end_effector_pose(x, y + self.TROFAST_Y_OFFSET, z, yaw,  pitch, roll)
-        gripper.command(1)
+        # ちょっと手前からアプローチ (X-0.05)
+        whole_body.move_end_effector_pose(x - 0.05, y, z, yaw, pitch, roll)
+        # 突っ込む (X+0.02)
+        whole_body.move_end_effector_pose(x + 0.02, y, z, yaw, pitch, roll)
+        gripper.command(0) # 掴む
+        # 引く (手前にバック X-0.25)
+        # Y軸方向のオフセット(TROFAST_Y_OFFSET)は状況によるが、基本は手前に引く
+        whole_body.move_end_effector_pose(x - 0.25, y + self.TROFAST_Y_OFFSET, z, yaw, pitch, roll)
+        gripper.command(1) # 離す
         self.change_pose("all_neutral")
 
     def push_in_trofast(self, pos_x, pos_y, pos_z, yaw, pitch, roll):
@@ -402,7 +536,7 @@ class WrsMainController(object):
         self.change_pose("look_at_shelf")
 
         rospy.loginfo("target_obj: " + target_obj + "  target_person: " + target_person)
-        # 物体検出結果から、把持するbboxを決定
+        # 物体検出結果から、把持するbboxを決定 (ここは既存の機能を使う)
         detected_objs = self.get_latest_detection()
         grasp_bbox = self.get_most_graspable_bboxes_by_label(detected_objs.bboxes, target_obj)
         if grasp_bbox is None:
@@ -498,7 +632,7 @@ class WrsMainController(object):
                 whole_body.move_to_joint_positions({"head_tilt_joint": angle, "head_pan_joint": 0.0})
                 rospy.sleep(0.8) # ブレが収まるのを待つ
 
-                # 認識実行
+                # 認識実行 (既存の物体認識を使う)
                 detected_objs = self.get_latest_detection()
                 
                 # 記憶に追加
@@ -572,36 +706,10 @@ class WrsMainController(object):
             else:
                 rospy.logerr("STUCK! No valid path found. Stopping task.")
                 break
-        """
-        for i in range(3):
-            # 毎回必ず床を見るようにする。
-            self.change_pose("look_at_near_floor")
-            rospy.sleep(0.5)
-
-            detected_objs = self.get_latest_detection()
-            bboxes = detected_objs.bboxes
-            
-            # スコアが低い(0.2未満など)誤検出は無視するフィルタリングを追加
-            valid_bboxes = [bbox for bbox in bboxes if bbox.score > 0.2]
-
-            # 座標変換を行う
-            pos_bboxes = []
-            for bbox in valid_bboxes:
-                # 処理高速化: 明らかに遠くにあるものや関係ないものはtf変換しないなどの工夫も可能だが
-                # ここでは安全重視で全て変換する
-                pos_bboxes.append(self.get_grasp_coordinate(bbox))
-
-            waypoint = self.select_next_waypoint(i, pos_bboxes)
-            # TODO メッセージを確認するためコメントアウトを外す
-            # rospy.loginfo(waypoint)
-            self.goto_pos(waypoint)
-        """
 
     def select_next_waypoint(self, current_stp, pos_bboxes):
         """
         waypoints から近い場所にあるものを除外し、最適なwaypointを返す。
-        x座標を原点に近い方からxa,xb,xcに定義する。bboxを判断基準として移動先を決定する(デフォルトは0.45間隔)
-        pos_bboxesは get_grasp_coordinate() 済みであること
         """
         interval = 0.45
         pos_xa = 1.7
@@ -666,40 +774,80 @@ class WrsMainController(object):
 
         return x_line[current_stp]
     
+    # ----------------------------------------------------------
+    #  【改造】ここだけ書き換え：自前のONNX検出を使って引き出しを開ける
+    # ----------------------------------------------------------
     def open_all_drawers(self):
         """
-        開始時にdrawerの3つの引き出しを全て開ける。
-        ただし、各ハンドルの座標は調べる必要あり。
+        [改造版] YOLO(ONNX)で検出した座標を使って、3つの引き出しを全て開ける
         """
-        rospy.loginfo("#### Opening All Drawers ####")
+        rospy.loginfo("#### Opening All Drawers (YOLO/ONNX Mode) ####")
         
-        #引き出し前へ移動
+        # 1. 棚の前へ移動
         self.goto_name("stair_like_drawer")
         self.change_pose("look_at_near_floor")
+        rospy.sleep(2.0) # 画像安定待ち
 
-        # --- 1. 左の引き出し(Drawer Left / Shape items) ---
-        #以下のhandle_****達は書き換える必要あり
-        handle_left_x = 0.44   # ロボットからの距離（奥行）
-        handle_left_y = 0.20   # 左右（左がプラスの場合）
-        handle_left_z = 0.40   # 高さ
-        rospy.loginfo("Opening Drawer Left...")
-        self.pull_out_trofast(handle_left_x, handle_left_y, handle_left_z, -90, 0, 0)
-
-        # --- 2. 上の引き出し (Drawer Top / Tools) ---
-        handle_top_x = 0.44
-        handle_top_y = -0.10   
-        handle_top_z = 0.80    # 高い位置
-        rospy.loginfo("Opening Drawer Top...")
-        self.pull_out_trofast(handle_top_x, handle_top_y, handle_top_z, -90, 0, 0)
-
-        # --- 3. 下の引き出し (Drawer Bottom / Tools) ---
-        handle_bottom_x = 0.44
-        handle_bottom_y = -0.10
-        handle_bottom_z = 0.50 # 低い位置
-        rospy.loginfo("Opening Drawer Bottom...")
-        self.pull_out_trofast(handle_bottom_x, handle_bottom_y, handle_bottom_z, -90, 0, 0)
+        # 2. 【重要】ここで既存の get_latest_detection ではなく、自作の detect_handles_onnx を使う
+        handles = self.detect_handles_onnx()
         
-        rospy.loginfo("All drawers are open.")
+        rospy.loginfo("取っ手を %d 個 発見しました！", len(handles))
+
+        if not handles:
+            rospy.logwarn("取っ手が見つかりませんでした。best.onnxモデルまたはカメラを確認してください。")
+            return
+
+        # 3. 見つかった取っ手の「3次元座標」を全部計算する
+        # (既存の get_grasp_coordinate はそのまま再利用できる)
+        handle_positions = []
+        for bbox in handles:
+            pos = self.get_grasp_coordinate(bbox)
+            if pos:
+                handle_positions.append(pos)
+                rospy.loginfo("Handle Pos: x=%.2f, y=%.2f, z=%.2f", pos.x, pos.y, pos.z)
+
+        # 4. 座標をもとに「左」「上」「下」を自動判定する
+        drawer_left = None
+        drawer_top = None
+        drawer_bottom = None
+        
+        right_side_handles = []
+
+        for pos in handle_positions:
+            # ロボットから見て左(Y > 0.05) なら左の引き出し
+            if pos.y > 0.05: 
+                drawer_left = pos
+            else:
+                right_side_handles.append(pos)
+
+        # 右側にあるものを高さ(Z)が高い順に並べる
+        right_side_handles.sort(key=lambda p: p.z, reverse=True)
+
+        if len(right_side_handles) >= 1:
+            drawer_top = right_side_handles[0]
+        if len(right_side_handles) >= 2:
+            drawer_bottom = right_side_handles[1]
+
+        # 5. 判定できた場所を開けに行く
+        if drawer_left:
+            rospy.loginfo("【左】の引き出しを開けます")
+            self.pull_out_trofast(drawer_left.x, drawer_left.y, drawer_left.z, -90, 0, 0)
+        else:
+            rospy.logwarn("【警告】左の引き出しが見つかりませんでした")
+
+        if drawer_top:
+            rospy.loginfo("【右上】の引き出しを開けます")
+            self.pull_out_trofast(drawer_top.x, drawer_top.y, drawer_top.z, -90, 0, 0)
+        else:
+            rospy.logwarn("【警告】右上の引き出しが見つかりませんでした")
+
+        if drawer_bottom:
+            rospy.loginfo("【右下】の引き出しを開けます")
+            self.pull_out_trofast(drawer_bottom.x, drawer_bottom.y, drawer_bottom.z, -90, 0, 0)
+        else:
+            rospy.logwarn("【警告】右下の引き出しが見つかりませんでした")
+
+        rospy.loginfo("All drawers logic finished.")
 
 
     def execute_task1(self):
@@ -833,8 +981,10 @@ class WrsMainController(object):
         """
         self.change_pose("all_neutral")
         
+        # 1. まず自前ONNXで引き出しを開ける
         self.open_all_drawers()
 
+        # 2. その後、既存タスクを実行
         self.execute_task1()
         self.execute_task2a()
         self.execute_task2b()
