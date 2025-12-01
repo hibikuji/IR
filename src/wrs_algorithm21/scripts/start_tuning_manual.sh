@@ -1,22 +1,29 @@
 #!/bin/bash -eu
 
+# 【重要】起動時に前回のゴミプロセスを強制終了する
+# これにより「二重起動」によるメモリ枯渇を防ぎます
+echo "Cleaning up previous processes..."
+pkill -f frcnn_finetuned || true
+pkill -f pcd_to_tf || true
+
+# 【重要】このスクリプト終了時に、バックグラウンド起動したノードを全停止する設定
+trap 'kill $(jobs -p)' EXIT
+
 # 1. Python環境とROS環境のセットアップ
 unset PYTHONPATH
 source /opt/ros/noetic/setup.bash
 source /workspace/devel/setup.bash
 
-# 3. 認識系のノードをバックグラウンドで起動
-# (WrsMainControllerの初期化で必要な場合があるため、元の記述を残しています)
+# 2. 認識系のノードをバックグラウンドで起動
+echo "Starting perception nodes..."
 roslaunch hsr_perception pcd_to_tf.launch &
 roslaunch wrs_detector frcnn_finetuned.launch &
 
-# ノードが立ち上がるまで少し待機
-echo "Waiting for perception nodes to start..."
+# ノードが立ち上がるまで待機
+echo "Waiting 5 seconds for perception nodes..."
 sleep 5
 
-# 4. 【検証ツールの起動】
-# ここは '&' を付けずに実行します（キーボード入力を受け付けるため）
-# また、start_task.launch（自動タスク）は衝突するのでコメントアウトか削除します
-rosrun wrs_algorithm tuning_drawer_abs.py
-
-# ツールが終了(qで終了)したら、このスクリプトも終わる
+# 3. 【検証ツールの起動】
+# ファイル名を正しいものに修正しました
+echo "Starting Manual Tuning Tool..."
+rosrun wrs_algorithm tuning_drawer_manual.py
