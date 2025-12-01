@@ -465,7 +465,10 @@ class WrsMainController(object):
         棚で取得したものを人に渡す。
         """
         self.change_pose("look_at_near_floor")
-        self.goto_name("shelf")
+        if(target_obj == "mustard_bottle" or target_obj == "apple"):
+            self.goto_name("shelf_pos2")
+        else:
+            self.goto_name("shelf_pos1")
         self.change_pose("look_at_shelf")
 
         rospy.loginfo("target_obj: " + target_obj + "  target_person: " + target_person)
@@ -889,13 +892,14 @@ class WrsMainController(object):
         # 命令文を取得
         if self.instruction_list:
             latest_instruction = self.instruction_list[-1]
-            rospy.loginfo("recieved instruction: %s", latest_instruction)
+            rospy.logwarn("recieved instruction: %s", latest_instruction)
         else:
             rospy.logwarn("instruction_list is None")
             return
 
         # 命令内容を解釈
         target_obj, target_person = self.extract_target_obj_and_person(latest_instruction)
+        rospy.logwarn("target_obj: %s target_person: %s", target_obj, target_person)
 
         # 指定したオブジェクトを指定した配達先へ
         if target_obj and target_person:            self.deliver_to_target(target_obj, target_person)
@@ -908,8 +912,8 @@ class WrsMainController(object):
         
         ##self.open_all_drawers() #テストのため一回無効
 
-        self.execute_task1()
-        self.execute_task2a()
+        # self.execute_task1()
+        # self.execute_task2a()
         self.execute_task2b()
 
 
