@@ -3,6 +3,8 @@
 
 import rospy
 import math
+import gc  # 【追加】メモリ掃除用
+import traceback # 【追加】エラー表示用
 # import tf  <-- これを削除しました
 from wrs_main_node import WrsMainController
 from wrs_algorithm.util import omni_base, whole_body, gripper
@@ -66,8 +68,21 @@ def move_shoulder(angle_deg):
     rospy.loginfo(f"肩角度を変更: {angle_deg} deg")
     whole_body.move_to_joint_positions({"arm_flex_joint": angle_rad})
 
+def clean_memory(ctrl):
+    """溜まったデータを捨ててメモリ掃除をする関数"""
+    #リストの中身を空にする
+    ctrl.instruction_list = []
+    ctrl.detection_list   = []
+    #Pythonのメモリ領域を強制開放
+    gc.collect()
+    rospy.loginfo("Memory cleaned.")
+
 def main():
     rospy.init_node('drawer_tuning_abs')
+
+    # ガベージコレクション有効化
+    gc.enable()
+
     ctrl = WrsMainController()
     
     rospy.loginfo("初期化中... まずは定位置へ移動します")
@@ -75,6 +90,17 @@ def main():
     set_arm_extended()
 
     while not rospy.is_shutdown():
+        # =========================================================
+        # 【重要】メモリリーク対策
+        # wrs_main_node内で無限に追加され続けるリストをここで強制的に空にする
+        # =========================================================
+        ctrl.instruction_list = []
+        ctrl.detection_list   = []
+        
+        # 不要メモリの強制回収
+        gc.collect()
+        rospy.loginfo("Memory cleaned.")
+        
         # ループのたびに「今の絶対座標」を表示する
         curr_x, curr_y, curr_yaw = get_current_pose(ctrl)
         
@@ -91,7 +117,15 @@ def main():
         print(" 4: 放す (Open) & リセット")
         print(" q: 終了")
         
-        cmd = input("Command >> ") # Python 3用
+        try:
+            try:
+                cmd = input("Command >> ") # Python 3用
+            except NameError:
+                cmd = input("Command >>")
+        except EOFError:
+            break
+
+        clean_memory(ctrl)
         
         if cmd == 'q':
             break
