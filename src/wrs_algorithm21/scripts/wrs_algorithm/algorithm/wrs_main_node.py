@@ -600,6 +600,27 @@ class WrsMainController(object):
             if dist < safety_radius:
                 return False
         return True
+    
+    def is_path_safety_margin(self, start_pos, target_pos):
+        """
+        startからtargetへの移動ルートにおいて、
+        「最も近い障害物との距離」を返す。
+        """
+        min_dist_found = 999.0 # 十分大きな値で初期化
+        
+        # 記憶している全障害物との距離をチェック
+        for obs in self.obstacle_memory:
+            obs_pos = [obs.x, obs.y]
+            
+            # 線分（移動ルート）と障害物の距離を計算
+            # ※ get_dist_point_to_segment は元のコードにある既存関数を利用
+            dist = self.get_dist_point_to_segment(obs_pos, start_pos, target_pos)
+            
+            # 記録されている中で「最もルートに近い障害物」までの距離を更新
+            if dist < min_dist_found:
+                min_dist_found = dist
+        
+        return min_dist_found
 
     def execute_avoid_blocks(self):
         # blockを避ける
@@ -614,7 +635,11 @@ class WrsMainController(object):
         
         # 探索するY座標の候補（0.1m刻みで細かく）
         # 2.0m 〜 3.5m の範囲
-        candidate_ys = [y * 0.1 for y in range(20, 36)]
+        candidate_ys = [y * 0.05 for y in range(45, 59)]
+
+        # 物理的な衝突限界 (HSRの半径は約0.215m)
+        # これより近いと確実にぶつかる
+        PHYSICAL_MIN_DIST = 0.22
 
         # 現在地を取得
         current_pose = self.get_relative_coordinate("map", "base_footprint")
@@ -638,7 +663,7 @@ class WrsMainController(object):
                 # 記憶に追加
                 for bbox in detected_objs.bboxes:
                     # スコアが低い誤検出は無視
-                    if bbox.score < 0.2: continue
+                    if bbox.score < 0.3: continue
 
                     # 座標変換
                     pos = self.get_grasp_coordinate(bbox)
@@ -647,8 +672,8 @@ class WrsMainController(object):
                     is_known = False
                     for mem in self.obstacle_memory:
                         dist = math.sqrt((mem.x - pos.x)**2 + (mem.y - pos.y)**2)
-                        # 20cm以内の誤差なら同じ物体とみなす
-                        if dist < 0.1: 
+                        # 30cm以内の誤差なら同じ物体とみなす
+                        if dist < 0.3: 
                             is_known = True
                             break
                     
@@ -661,48 +686,62 @@ class WrsMainController(object):
             
             if i + 1 < len(x_steps):
                 next_target_x = x_steps[i + 1]
+                is_last_step = False
             else:
                 next_target_x = target_x + 0.5
+                is_last_step = True
             
-            best_y = None
-            min_cost = 999.0 # 移動コスト（少ないほうがいい）
+            best_y1 = None
+            max_route_score = -1.0 # 移動コスト（少ないほうがいい）
 
             # 全ての「次のY候補」について調査
             for y1 in candidate_ys:
                 # パス1: 現在地 -> 候補1 が安全か？
-                if not self.is_path_safe([current_x, current_y], [target_x, y1]):
+                margin1 = self.is_path_safety_margin([current_x, current_y], [target_x, y1])
+                    
+                if margin1 < PHYSICAL_MIN_DIST:
                     continue # ダメなら次の候補へ
 
+                route_score_for_y1 = -1.0
                 # もしこれが最後のステップなら、Step1に行けるだけでOK
-                if i == len(x_steps) - 1:
-                    cost = abs(y1 - current_y) # 横移動が少ないものを優先
-                    if cost < min_cost:
-                        min_cost = cost
-                        best_y = y1
-                    continue
+                if is_last_step:
+                    route_score_for_y1 = margin1
+                else:
+                    best_margin2 = -1.0
 
-                # まだ先がある場合、Step2へのルートがあるかチェック（詰み防止）
-                can_go_further = False
-                for y2 in candidate_ys:
-                    # パス2: 候補1 -> 候補2 が安全か？
-                    if self.is_path_safe([target_x, y1], [next_target_x, y2]):
-                        can_go_further = True
-                        break # 一つでも行ける未来があればOK
+                    # まだ先がある場合、Step2へのルートがあるかチェック（詰み防止）
                 
-                if can_go_further:
-                    # 未来があるルートの中で、最も移動量が少ないものを記録
-                    cost = abs(y1 - current_y)
-                    if cost < min_cost:
-                        min_cost = cost
-                        best_y = y1
+                    for y2 in candidate_ys:
+                        # パス2: 候補1 -> 候補2 が安全か？
+                        margin2 = self.is_path_safety_margin([target_x, y1], [next_target_x, y2])
+                        
+                        if margin2 < PHYSICAL_MIN_DIST:
+                            continue
+
+                        if margin2 > best_margin2:
+                            best_margin2 = margin2
+                
+                    if best_margin2 < PHYSICAL_MIN_DIST:
+                        continue
+
+                    route_score_for_y1 = min(margin1, best_margin2)
+                if route_score_for_y1 > max_route_score:
+                    max_route_score = route_score_for_y1
+                    best_y1 = y1
 
             # 3. 移動実行
-            if best_y is not None:
-                rospy.loginfo(f"Valid Path Found! Moving to Y={best_y:.2f}")
-                self.goto_pos([target_x, best_y, 90])
+            if best_y1 is not None:
+                # マージン表示 (デバッグ用)
+                if max_route_score < 0.30:
+                    rospy.logwarn(f"Narrow path selected! Bottleneck Margin={max_route_score:.3f}m")
+                else:
+                    rospy.loginfo(f"Safe path selected. Bottleneck Margin={max_route_score:.3f}m")
+                
+                self.goto_pos([target_x, best_y1, 90])
+                rospy.sleep(1.0)
                 # 現在地情報を更新（goto_posは誤差が出るのでtfで取り直しても良いが、ここでは目標値をセット）
                 current_x = target_x
-                current_y = best_y
+                current_y = best_y1
             else:
                 rospy.logerr("STUCK! No valid path found. Stopping task.")
                 break
