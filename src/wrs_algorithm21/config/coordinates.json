@@ -4,7 +4,7 @@
         "long_table_r": [1.45, 1.0, 90],
         "near_long_table_l": [0.2, 0.4, 90],
         "drawer": [0.35, 0.2, -90],
-        "stair_like_drawer":[0.178, 0.8, -90],
+        "stair_like_drawer":[0.178, 1.0, -90],
         "bin_a": [2.4, 0.0, -90],
         "bin_a_place": [2.35, 0.0, -90],
         "bin_b": [2.7, 0.0, -90],
@@ -15,13 +15,13 @@
         "person_a": [0.7, 2.8, 180],
         "person_b": [0.7, 3.9, 180],
         "home": [0, 0.2, 0],
-        "drawer_left": [],
-        "drawer_top": [],
-        "drawer_bottom": [],
-        "tray_A": [],
-        "tray_B": [],
-        "container_A": [],
-        "container_B": []
+        "drawer_left": [0.5, 0.3, -90],
+        "drawer_top": [0.2, 0.3, -90],
+        "drawer_bottom": [0.2, 0.0, -90],
+        "tray_A": [1.6, 0.0, -90],
+        "tray_B": [1.8, 0.0, -90],
+        "container_A": [1.3, 0.0, -90],
+        "container_B": [1.7, 0.0, -90]
     },
     "routes": {
         "test": [
