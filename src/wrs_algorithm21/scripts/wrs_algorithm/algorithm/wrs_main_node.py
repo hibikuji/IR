@@ -416,7 +416,22 @@ class WrsMainController(object):
                 method = self.grasp_from_upper_side
 
         method(grasp_pos)
-        return True
+
+        def is_really_success():
+            THRESHOLD = 0.02
+            current_gap = gripper.get_current_gap()
+            rospy.loginfo("Current Gripper Gap: %f", current_gap)
+
+            if current_gap > THRESHOLD:
+                rospy.logwarn("Grasp Success!")
+                return True
+            else:
+                rospy.logwarn("Grasp Failed... (Gap is too small)")
+                # 失敗したのでハンドを開くなどの処理が必要ならここに入れる
+                gripper.command(1.0) 
+                return False
+
+        return is_really_success()
 
     def put_in_place(self, place, into_pose):
         # 指定場所に入れ、all_neutral姿勢を取る。
@@ -783,7 +798,7 @@ class WrsMainController(object):
         rospy.loginfo("#### start Task 1 ####")
         hsr_position = [
             ("tall_table", "look_at_tall_table"),
-            ("near_long_table_l", "look_at_near_floor"),
+            #("near_long_table_l", "look_at_near_floor"),
             ("long_table_r", "look_at_tall_table"),
         ]
 
@@ -791,6 +806,7 @@ class WrsMainController(object):
         tool_cnt = 0
         for plc, pose in hsr_position:
             # for _ in range(self.DETECT_CNT):
+            ignore_labels_at_current_loc = []
             while True:
                 # 移動と視線指示
                 self.goto_name(plc)
@@ -799,7 +815,12 @@ class WrsMainController(object):
 
                 # 把持対象の有無チェック
                 detected_objs = self.get_latest_detection()
-                graspable_obj = self.get_most_graspable_obj(detected_objs.bboxes)
+                valid_bboxes = [
+                    bbox for bbox in detected_objs.bboxes 
+                    if bbox.label not in ignore_labels_at_current_loc
+                ]
+                graspable_obj = self.get_most_graspable_obj(valid_bboxes)
+                ## graspable_obj = self.get_most_graspable_obj(detected_objs.bboxes)
 
                 if graspable_obj is None:
                     rospy.logwarn("Cannot determine object to grasp. Grasping is aborted.")
@@ -815,14 +836,18 @@ class WrsMainController(object):
                 grasp_pos = self.get_grasp_coordinate(grasp_bbox)
                 self.change_pose("grasp_on_table")
                 is_success = self.exec_graspable_method(grasp_pos, label)
+                # rospy.logwarn("is_success: [%s]", str(is_success))
                 self.change_pose("all_neutral")
 
                 if not is_success:
                     # ここで失敗した物体を除外する
                     rospy.logwarn("Failed to grasp [%s]", label)
                     if label not in self.IGNORE_LIST:
-                        self.IGNORE_LIST.append(label)
-                    break
+                        ignore_labels_at_current_loc.append(label)
+                        #self.IGNORE_LIST.append(label)
+                        rospy.sleep(1.0)
+                    continue
+                    #break
 
                 most_likely_label = self.get_most_likely_category(label)
                 rospy.logwarn("検出ラベル[%s]のもっともらしいカテゴリは [%s]", label, most_likely_label)
@@ -912,9 +937,9 @@ class WrsMainController(object):
         
         ##self.open_all_drawers() #テストのため一回無効
 
-        # self.execute_task1()
-        # self.execute_task2a()
-        self.execute_task2b()
+        self.execute_task1()
+        #self.execute_task2a() # task2bを実行するには必ずtask2aを実行しないといけないので注意
+        #self.execute_task2b()
 
 
 def main():
