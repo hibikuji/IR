@@ -524,9 +524,9 @@ class WrsMainController(object):
         grasp_pos = self.get_grasp_coordinate(grasp_bbox)
         self.change_pose("grasp_on_shelf")
         
-        self.goto_name("self_pos1")
+        self.goto_name("shelf_pos1")
         rospy.sleep(1.0)
-        self.goto_name("self_pos2")
+        self.goto_name("shelf_pos2")
         rospy.sleep(1.0)
 
         self.grasp_from_front_side(grasp_pos)
@@ -992,7 +992,7 @@ class WrsMainController(object):
         
         ##self.open_all_drawers() #テストのため一回無効
 
-        self.execute_task1()
+        #self.execute_task1()
         self.execute_task2a() # task2bを実行するには必ずtask2aを実行しないといけないので注意
         self.execute_task2b()
 
