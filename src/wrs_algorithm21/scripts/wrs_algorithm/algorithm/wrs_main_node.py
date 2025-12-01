@@ -36,6 +36,9 @@ class WrsMainController(object):
     TROFAST_Y_OFFSET = 0.2
 
     def __init__(self):
+        # 物体検知の最大最小バウンディングボックス
+        self.MIN_BBOX_AREA = 1600 # 40*40
+        self.MAX_BBOX_AREA = 10000 # 100*100
         # 変数の初期化
         self.instruction_list = []
         self.detection_list   = []
@@ -373,7 +376,30 @@ class WrsMainController(object):
                 return "TASK_ITEM"
         
         return "UNKNOWN"
+    
+    def grasp_from_left_side(self, grasp_pos):
+        # オフセットを引く（マイナス側から近づくため）
+        grasp_pos.x -= self.HAND_PALM_OFFSET 
+        
+        # preliminary を "-x" にする
+        # yaw は右側と逆向き（例: 180）にする
+        self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, 180, -100, 0, "-x")
 
+    def grasp_from_right_side(self, grasp_pos):
+        """
+        横（X軸プラス方向）から把持を行う
+        """
+        # 【変更点1】 手のひらのオフセットを X軸 に対して適用する
+        # プラス方向から近づくなら、目標より手前は「X座標が大きい方」なので "+" する
+        grasp_pos.x += self.HAND_PALM_OFFSET 
+
+        rospy.loginfo("grasp_from_right_side (%.2f, %.2f, %.2f)", grasp_pos.x, grasp_pos.y, grasp_pos.z)
+
+        # 【変更点2 & 3】
+        # yaw: 向きを90度変える（例: -90 -> 0）※ロボットの初期向きによります
+        # preliminary: "+x" (X軸プラス側からアプローチ開始) に変更
+        self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, 0, -100, 0, "+x")
+    
     def grasp_from_front_side(self, grasp_pos):
         """
         正面把持を行う
@@ -441,7 +467,7 @@ class WrsMainController(object):
         self.change_pose("all_neutral")
         self.change_pose(into_pose)
         gripper.command(1)
-        rospy.sleep(5.0)
+        rospy.sleep(4.0)
         self.change_pose("all_neutral")
 
     def pull_out_trofast(self, x, y, z, yaw, pitch, roll):
@@ -797,7 +823,9 @@ class WrsMainController(object):
         """
         rospy.loginfo("#### start Task 1 ####")
         hsr_position = [
+            #("near_tall_table_c", "look_at_near_floor"),
             ("tall_table", "look_at_tall_table"),
+            ("near_logn_table_c", "look_at_near_floor"),
             #("near_long_table_l", "look_at_near_floor"),
             ("long_table_r", "look_at_tall_table"),
         ]
@@ -815,10 +843,29 @@ class WrsMainController(object):
 
                 # 把持対象の有無チェック
                 detected_objs = self.get_latest_detection()
-                valid_bboxes = [
-                    bbox for bbox in detected_objs.bboxes 
-                    if bbox.label not in ignore_labels_at_current_loc
-                ]
+                ##valid_bboxes = [
+                ##    bbox for bbox in detected_objs.bboxes 
+                ##    if bbox.label not in ignore_labels_at_current_loc
+                ##]
+                valid_bboxes = []
+                for bbox in detected_objs.bboxes:
+                    # 1. 無視リストに入っているか？
+                    if bbox.label in ignore_labels_at_current_loc:
+                        continue
+
+                    # 2. サイズが小さすぎないか？ (幅 × 高さ で面積を計算)
+                    bbox_area = bbox.w * bbox.h
+                    '''
+                    if bbox_area < self.MIN_BBOX_AREA:
+                        rospy.logwarn("無視: [%s] は小さすぎます (Area: %d)", bbox.label, bbox_area)
+                        continue
+                    
+                    if bbox_area > self.MAX_BBOX_AREA:
+                        rospy.logwarn("無視: [%s] は大きすぎます (Area: %d)", bbox.label, bbox_area)
+                        continue
+                    '''
+                    # 合格したものだけリストに入れる
+                    valid_bboxes.append(bbox)
                 graspable_obj = self.get_most_graspable_obj(valid_bboxes)
                 ## graspable_obj = self.get_most_graspable_obj(detected_objs.bboxes)
 
@@ -871,9 +918,11 @@ class WrsMainController(object):
                     # カテゴリ: Tools -> Drawer_top / Drawer_bottom 
                     rospy.loginfo("カテゴリ [Tools] -> Drawer Top / Bottom")
                     if tool_cnt % 2 == 0:
-                        self.put_in_place("drawer_top", "put_in_drawer_pose")
+                        self.put_in_place("bin_a_place", "put_in_bin")
+                        ## self.put_in_place("drawer_top", "put_in_drawer_pose")
                     else:
-                        self.put_in_place("drawer_bottom", "put_in_drawer_pose")
+                        self.put_in_place("bin_b_place", "put_in_bin")
+                        ## self.put_in_place("drawer_bottom", "put_in_drawer_pose")
                     tool_cnt += 1 # Tool専用カウンターを増やす
 
                 elif most_likely_label == "SHAPE_ITEM":
@@ -938,8 +987,8 @@ class WrsMainController(object):
         ##self.open_all_drawers() #テストのため一回無効
 
         self.execute_task1()
-        #self.execute_task2a() # task2bを実行するには必ずtask2aを実行しないといけないので注意
-        #self.execute_task2b()
+        self.execute_task2a() # task2bを実行するには必ずtask2aを実行しないといけないので注意
+        self.execute_task2b()
 
 
 def main():
