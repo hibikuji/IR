@@ -523,6 +523,12 @@ class WrsMainController(object):
         # BBoxの3次元座標を取得して、その座標で把持する
         grasp_pos = self.get_grasp_coordinate(grasp_bbox)
         self.change_pose("grasp_on_shelf")
+        
+        self.goto_name("self_pos1")
+        rospy.sleep(1.0)
+        self.goto_name("self_pos2")
+        rospy.sleep(1.0)
+
         self.grasp_from_front_side(grasp_pos)
         self.change_pose("all_neutral")
 
