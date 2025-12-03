@@ -52,21 +52,38 @@ def set_arm_extended():
     """アームを水平に伸ばす（初期姿勢）"""
     rospy.loginfo("アームを水平に展開します...")
     whole_body.move_to_joint_positions({
-        "arm_lift_joint":  0.40,  # 昇降高さ
-        "arm_flex_joint":  0.0,   # 肩: 0=水平
+        "arm_lift_joint":  0.1,  # 昇降高さ
+        "arm_flex_joint":  -1.57,   # 肩: 0=水平
         "arm_roll_joint":  0.0,
-        "wrist_flex_joint": -1.57, # 手首: 正面向き
+        "wrist_flex_joint": 0.0, # 手首: 正面向き
         "wrist_roll_joint": 0.0,
         "head_pan_joint":  0.0,
         "head_tilt_joint": -0.5
     })
     gripper.command(1) # ハンドを開く
 
-def move_shoulder(angle_deg):
-    """肩の角度だけを絶対角度(deg)で指定して動かす"""
-    angle_rad = math.radians(angle_deg)
-    rospy.loginfo(f"肩角度を変更: {angle_deg} deg")
-    whole_body.move_to_joint_positions({"arm_flex_joint": angle_rad})
+def move_shoulder(shoulder_deg):
+    """肩の角度だけを絶対角度(deg)で指定して、手先は常に「真下」を向くようにする"""
+    # 1. 肩の角度をラジアンに変換
+    shoulder_rad = math.radians(shoulder_deg)
+    
+    # 2. 手先を真下(-90度 = -1.57rad)に向けるための手首角度を計算
+    # Global(-1.57) = Shoulder + Wrist  =>  Wrist = -1.57 - Shoulder
+    target_wrist_rad = 0.0 - shoulder_rad
+    
+    rospy.loginfo(f"Hook連動: 肩={shoulder_deg}deg, 手首={math.degrees(target_wrist_rad):.2f}deg")
+
+    # 3. 全身制御指令を送る
+    whole_body.move_to_joint_positions({
+        "arm_lift_joint":  0.40,   # 高さは維持（必要なら引数化）
+        "arm_flex_joint":  shoulder_rad,
+        "arm_roll_joint":  0.0,
+        "wrist_flex_joint": target_wrist_rad, # ★ここが連動ポイント
+        "wrist_roll_joint": 0.0,
+        "head_pan_joint":  0.0,
+        "head_tilt_joint": -0.5
+    })
+
 
 def clean_memory(ctrl):
     """溜まったデータを捨ててメモリ掃除をする関数"""
@@ -85,7 +102,10 @@ def main():
 
     ctrl = WrsMainController()
     
-    rospy.loginfo("初期化中... まずは定位置へ移動します")
+    rospy.loginfo("初期化中")
+    ctrl.change_pose("all_neutral")
+    rospy.sleep(1.0)
+    rospy.loginfo("定位置へ移動します")
     ctrl.goto_name("stair_like_drawer")
     set_arm_extended()
 
