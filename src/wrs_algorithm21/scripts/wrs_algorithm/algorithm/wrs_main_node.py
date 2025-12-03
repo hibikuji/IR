@@ -696,24 +696,18 @@ class WrsMainController(object):
 
     def execute_avoid_blocks(self):
         """
-        【修正版】Y軸（横方向）へ移動しながら、X軸（縦方向）の安全な位置を探す
-        2手先読み (Step1 -> Step2) も行い、詰み防止をする
+        【修正・最終版】
+        1. 自分フィルタ追加 (半径0.35m以内は無視) ← NEW!
+        2. 止まらずに進む「突破型」ロジック
+        3. Y軸ステップ細分化 & X軸探索範囲拡大
         """
-        rospy.loginfo("#### Start Advanced Lookahead Avoidance (Y-Axis Traverse) ####")
+        rospy.loginfo("#### Start Advanced Lookahead Avoidance (Self-Filter Enabled) ####")
 
-        # -----------------------------------------------------
-        # 軸の設定（画像に合わせて修正）
-        # -----------------------------------------------------
-        # Start(Y=1.85) -> Goal(Y=3.5) に向かって横に刻む
-        y_steps = [2.4, 2.9, 3.5]
-        
-        # 探索するX座標（縦の位置）の候補
-        # X=1.80m ~ 2.70m の範囲で、障害物がないレーンを探す
-        candidate_xs = [x * 0.05 for x in range(36, 55)] 
+        # 設定
+        y_steps = [2.2, 2.5, 2.8, 3.1, 3.5]
+        candidate_xs = [x * 0.02 for x in range(110, 151)] # 2.20m ~ 3.02m
 
-        PHYSICAL_MIN_DIST = 0.22 # ロボットの半径
-
-        # 現在地を取得
+        # 現在地取得
         current_pose = self.get_relative_coordinate("map", "base_footprint")
         current_x = current_pose.translation.x
         current_y = current_pose.translation.y
@@ -722,80 +716,71 @@ class WrsMainController(object):
             rospy.loginfo(f"--- Planning for Step {i+1} (Target Y={target_y}) ---")
 
             # -------------------------------------------------
-            # 1. 死角確認（首振り）
+            # 1. 認識
             # -------------------------------------------------
-            look_tilt = -0.5
-            head_pans = [1.0, 0.0, -1.0] # 進行方向（左）〜右まで広く見る
+            head_tilts = [-0.5, -1.1] 
+            head_pans = [0.8, 0.0, -0.8] 
 
-            for pan in head_pans:
-                whole_body.move_to_joint_positions({"head_tilt_joint": look_tilt, "head_pan_joint": pan})
-                rospy.sleep(0.8)
+            for tilt in head_tilts:
+                for pan in head_pans:
+                    whole_body.move_to_joint_positions({"head_tilt_joint": tilt, "head_pan_joint": pan})
+                    rospy.sleep(0.6)
 
-                detected_objs = self.get_latest_detection()
-                
-                for bbox in detected_objs.bboxes:
-                    if bbox.score < 0.3: continue
-                    pos = self.get_grasp_coordinate(bbox)
-                    if pos is None: continue
+                    detected_objs = self.get_latest_detection()
+                    for bbox in detected_objs.bboxes:
+                        if bbox.score < 0.3: continue
+                        pos = self.get_grasp_coordinate(bbox)
+                        if pos is None: continue
 
-                    is_known = False
-                    for mem in self.obstacle_memory:
-                        dist = math.sqrt((mem.x - pos.x)**2 + (mem.y - pos.y)**2)
-                        if dist < 0.3: 
-                            is_known = True
-                            break
-                    if not is_known:
-                        self.obstacle_memory.append(pos)
-                        rospy.loginfo(f"New Obstacle found at pan {pan}: ({pos.x:.2f}, {pos.y:.2f})")
+                        # 【追加】自分フィルタ
+                        # ロボット中心からの距離を計算
+                        dist_from_self = math.sqrt((current_x - pos.x)**2 + (current_y - pos.y)**2)
+                        
+                        # 半径35cm以内なら「自分」として無視
+                        if dist_from_self < 0.35:
+                            rospy.loginfo(f"Ignoring self/noise at ({pos.x:.2f}, {pos.y:.2f}), dist={dist_from_self:.2f}")
+                            continue
+
+                        # 既存の重複チェック
+                        is_known = False
+                        for mem in self.obstacle_memory:
+                            dist = math.sqrt((mem.x - pos.x)**2 + (mem.y - pos.y)**2)
+                            if dist < 0.3: 
+                                is_known = True
+                                break
+                        if not is_known:
+                            self.obstacle_memory.append(pos)
+                            rospy.loginfo(f"Obstacle added: ({pos.x:.2f}, {pos.y:.2f})")
 
             # -------------------------------------------------
-            # 2. ルートプランニング（2手先読み）
+            # 2. ルートプランニング (絶対に止まらない)
             # -------------------------------------------------
-            
-            # 次のターゲットY座標を決める（先読み用）
             if i + 1 < len(y_steps):
                 next_target_y = y_steps[i + 1]
                 is_last_step = False
             else:
-                next_target_y = target_y + 0.5 # 最後は少し先まで見る
+                next_target_y = target_y + 0.5 
                 is_last_step = True
             
             best_x1 = None
-            max_route_score = -1.0
+            max_route_score = -999.0 
 
-            # 【1手目】現在地 -> 候補地(x1, target_y) を総当り
             for x1 in candidate_xs:
-                # まず1手目が安全か？
                 margin1 = self.is_path_safety_margin([current_x, current_y], [x1, target_y])
-                    
-                if margin1 < PHYSICAL_MIN_DIST:
-                    continue 
-
+                
                 route_score_for_x1 = -1.0
                 
                 if is_last_step:
                     route_score_for_x1 = margin1
                 else:
-                    # =========================================
-                    # 【ここが2手先読み】
-                    # 1手目の場所 (x1) に行ったとして、そこからさらに次 (x2) へ行けるか？
-                    # =========================================
-                    best_margin2 = -1.0
-                    
+                    best_margin2 = -999.0
                     for x2 in candidate_xs:
-                        # 候補地(x1, target_y) -> 次の目的地(x2, next_target_y)
                         margin2 = self.is_path_safety_margin([x1, target_y], [x2, next_target_y])
-                        
-                        if margin2 < PHYSICAL_MIN_DIST: continue
-                        if margin2 > best_margin2: best_margin2 = margin2
-                
-                    # 2手目が「どこにも行けない（詰み）」なら、この x1 は却下
-                    if best_margin2 < PHYSICAL_MIN_DIST: continue
-
-                    # 1手目と2手目のうち、より狭いほうをスコアとする（ボトルネック方式）
+                        if margin2 > best_margin2:
+                            best_margin2 = margin2
+                    
                     route_score_for_x1 = min(margin1, best_margin2)
 
-                # スコア更新
                 if route_score_for_x1 > max_route_score:
                     max_route_score = route_score_for_x1
                     best_x1 = x1
@@ -804,20 +789,18 @@ class WrsMainController(object):
             # 3. 移動実行
             # -------------------------------------------------
             if best_x1 is not None:
-                if max_route_score < 0.30:
-                    rospy.logwarn(f"Narrow path selected! Bottleneck Margin={max_route_score:.3f}m")
+                if max_route_score < 0.22:
+                    rospy.logwarn(f"Narrow path: Margin={max_route_score:.3f}m")
                 else:
-                    rospy.loginfo(f"Safe path selected. Bottleneck Margin={max_route_score:.3f}m")
+                    rospy.loginfo(f"Safe path: Margin={max_route_score:.3f}m")
                 
-                # 安全なX座標 (best_x1) と 目標Y座標 (target_y) へ移動
                 self.goto_pos([best_x1, target_y, 90])
                 rospy.sleep(1.0)
-                
                 current_x = best_x1
                 current_y = target_y
             else:
-                rospy.logerr("STUCK! No valid path found. Stopping task.")
-                break
+                # 万が一候補がない場合（理論上ありえないが）
+                rospy.logerr("CRITICAL: No candidates found. Staying.")
 
     def select_next_waypoint(self, current_stp, pos_bboxes):
         """
