@@ -1,5 +1,10 @@
 wrs_controller21
 /workspace/devel/.private/wrs_controller/cmake.lock /workspace/devel/./cmake.lock
+<<<<<<< HEAD
 /workspace/devel/.private/wrs_controller/share/wrs_controller/cmake/wrs_controllerConfig-version.cmake /workspace/devel/share/wrs_controller/cmake/wrs_controllerConfig-version.cmake
 /workspace/devel/.private/wrs_controller/share/wrs_controller/cmake/wrs_controllerConfig.cmake /workspace/devel/share/wrs_controller/cmake/wrs_controllerConfig.cmake
+=======
+/workspace/devel/.private/wrs_controller/share/wrs_controller/cmake/wrs_controllerConfig.cmake /workspace/devel/share/wrs_controller/cmake/wrs_controllerConfig.cmake
+/workspace/devel/.private/wrs_controller/share/wrs_controller/cmake/wrs_controllerConfig-version.cmake /workspace/devel/share/wrs_controller/cmake/wrs_controllerConfig-version.cmake
+>>>>>>> origin/IR-B
 /workspace/devel/.private/wrs_controller/lib/pkgconfig/wrs_controller.pc /workspace/devel/lib/pkgconfig/wrs_controller.pc

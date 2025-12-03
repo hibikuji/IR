@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-WRS環境内でロボットを動作させるためのメインプログラム
+WRS環境内でロボットを動作させるためのメインプログラム (ONNX対応版)
 """
 
 from __future__ import unicode_literals, print_function, division, absolute_import
@@ -13,13 +13,104 @@ from turtle import pos
 import rospy
 import rospkg
 import tf2_ros
+# 画像処理用に追加
+import cv2
+import numpy as np
+from cv_bridge import CvBridge
+from sensor_msgs.msg import Image
 from std_msgs.msg import String
 from detector_msgs.srv import (
     SetTransformFromBBox, SetTransformFromBBoxRequest,
     GetObjectDetection, GetObjectDetectionRequest)
+from detector_msgs.msg import BBox
 from wrs_algorithm.util import omni_base, whole_body, gripper
 import math
+import re
 
+# ==========================================================
+# 【追加】取っ手専用：YOLO(ONNX)をOpenCVだけで動かすクラス
+# ==========================================================
+class HandleDetectorONNX(object):
+    def __init__(self, model_path, conf_thres=0.4, iou_thres=0.4):
+        self.conf_threshold = conf_thres
+        self.iou_threshold = iou_thres
+        self.net = None
+        
+        # モデルファイルの存在確認とロード
+        if os.path.exists(model_path):
+            rospy.loginfo("【取っ手検出】ONNXモデルをロード中...: " + model_path)
+            try:
+                self.net = cv2.dnn.readNetFromONNX(model_path)
+                # CPUで動作させる設定
+                self.net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+                self.net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+                rospy.loginfo("【取っ手検出】モデルロード完了！")
+            except Exception as e:
+                rospy.logerr("【取っ手検出】モデル読み込みエラー: {}".format(e))
+        else:
+            rospy.logerr("【取っ手検出】エラー: {} が見つかりません。".format(model_path))
+
+    def detect(self, cv_image):
+        """画像を受け取って取っ手のBBoxリストを返す"""
+        if self.net is None: return []
+
+        # 1. 画像の前処理 (YOLOv8標準の640x640にリサイズ)
+        input_width, input_height = 640, 640
+        blob = cv2.dnn.blobFromImage(cv_image, 1/255.0, (input_width, input_height), swapRB=True, crop=False)
+        self.net.setInput(blob)
+        
+        # 2. 推論実行
+        outputs = self.net.forward()
+        
+        # 3. 出力の整形
+        # YOLOv8 output: [1, 5, 8400] (batch, xywh+conf, anchors) -> 転置して [8400, 5]
+        outputs = np.array([cv2.transpose(outputs[0])])
+        rows = outputs.shape[1]
+
+        boxes = []
+        scores = []
+
+        # 画像サイズの比率計算
+        img_h, img_w = cv_image.shape[:2]
+        x_factor = img_w / input_width
+        y_factor = img_h / input_height
+
+        for i in range(rows):
+            # output[0][i] = [center_x, center_y, w, h, confidence]
+            confidence = outputs[0][i][4]
+            
+            if confidence >= self.conf_threshold:
+                box = outputs[0][i][0:4]
+                x_center = box[0]
+                y_center = box[1]
+                w = box[2]
+                h = box[3]
+                
+                # 座標を元の画像サイズに戻す
+                left = int((x_center - w / 2) * x_factor)
+                top = int((y_center - h / 2) * y_factor)
+                width = int(w * x_factor)
+                height = int(h * y_factor)
+                
+                boxes.append([left, top, width, height])
+                scores.append(float(confidence))
+
+        # 4. NMS (重なりを除去)
+        indices = cv2.dnn.NMSBoxes(boxes, scores, self.conf_threshold, self.iou_threshold)
+
+        results = []
+        if len(indices) > 0:
+            for i in indices.flatten():
+                bbox = BBox()
+                bbox.label = "handle" # 学習させたクラス名
+                bbox.score = scores[i]
+                bbox.x = boxes[i][0]
+                bbox.y = boxes[i][1]
+                bbox.w = boxes[i][2]
+                bbox.h = boxes[i][3]
+                results.append(bbox)
+                
+        return results
 
 class WrsMainController(object):
     """
@@ -43,11 +134,51 @@ class WrsMainController(object):
         self.coordinates = self.load_json(self.get_path(["config", "coordinates.json"]))
         self.poses       = self.load_json(self.get_path(["config", "poses.json"]))
 
+        food_cnt = 0
+        tool_cnt = 0
+
+        self.ORIENTATION_ITEM = [
+            "large_marker", "small_marker", "fork", "spoon"
+        ]
+        self.FOOD_ITEM = [
+            "cheez-it_cracker_box", "domino_suger box", "jell-o_chocolate_pudding_box",
+            "jell-o_strawberry_gelatin_box", "spam_potted_meat_can", "master_chef_coffee_can",
+            "starkist_tuna_fish_can", "pringles_chips_can", "french's_mustard_bottle",
+            "tomato_soup_can", "plastic_banana", "plastic_strawberry",
+            "plastic_apple", "plastic_lemon", "plastic_peach", "plastic_pear",
+            "plastic_orange", "plastic_plum"
+        ]
+        self.KITCHEN_ITEM = [
+            "windex_spray_bottle", "srub_cleanser_bottle", "scotch_brite_dobie_sponge",
+            "pitcher_base", "pitcher_lid", "plate", "bowl", "fork", "spoon", "spatula",
+            "wine_glass", "mug"
+        ]
+        self.TOOL_ITEM = [
+            "large_marker", "small_marker", "keys", "bolt_and_nut", "clamps"
+        ]
+        self.SHAPE_ITEM = [
+            "credit_card_blank", "mini_soccer_ball", "soft_ball", "baseball", "tennis_ball",
+            "racquetball", "golf_ball", "marbles", "cups", "foam_bridk", "dice", "chain"
+        ]
+        self.TASK_ITEM = [
+            "rubik's_cube", "colored_wood_blocks", "9-peg-hole_test", "toy_airplane", "lego_duplo",
+            "magazine", "black_t-shirt", "timer"
+        ]
+        self.DISCARD = [
+            "skillet", "skillet_lid", "table_cloth", "hammer", "adjustable_wrench", "wood_block",
+            "power_drill", "washers", "nails", "knife", "scissors", "padlock", "phillips_screwdriver",
+            "flat_screwdriver", "clear_box", "box_lid", "footlocker"
+        ]
+
+        self.obstacle_memory = []
+
         # ROS通信関連の初期化
         tf_from_bbox_srv_name = "set_tf_from_bbox"
         rospy.wait_for_service(tf_from_bbox_srv_name)
         self.tf_from_bbox_clt = rospy.ServiceProxy(tf_from_bbox_srv_name, SetTransformFromBBox)
 
+
+        # 既存の物体認識サービス（そのまま残す）
         obj_detection_name = "detection/get_object_detection"
         rospy.wait_for_service(obj_detection_name)
         self.detection_clt = rospy.ServiceProxy(obj_detection_name, GetObjectDetection)
@@ -57,6 +188,44 @@ class WrsMainController(object):
 
         self.instruction_sub = rospy.Subscriber("/message",    String, self.instruction_cb, queue_size=10)
         self.detection_sub   = rospy.Subscriber("/detect_msg", String, self.detection_cb,   queue_size=10)
+
+        # ==========================================================
+        # 【追加】自前で用意した取っ手認識器の初期化
+        # ==========================================================
+        self.bridge = CvBridge()
+        self.latest_image = None
+        # カメラ画像を常に受け取れるようにサブスクライバを追加
+        rospy.Subscriber("/hsrb/head_rgbd_sensor/rgb/image_rect_color", Image, self.image_cb)
+        
+        # 同じフォルダにある best.onnx を読み込む
+        onnx_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "best.onnx")
+        self.handle_detector = HandleDetectorONNX(onnx_path)
+
+    def image_cb(self, msg):
+        """【追加】カメラ画像を保存するコールバック"""
+        self.latest_image = msg
+
+    # ----------------------------------------------------------
+    #  【追加】取っ手専用の認識関数 (既存の認識とは別物)
+    # ----------------------------------------------------------
+    def detect_handles_onnx(self):
+        """
+        best.onnxを使って取っ手を検出する
+        """
+        if self.latest_image is None:
+            rospy.logwarn("カメラ画像がまだ届いていません")
+            return []
+        
+        try:
+            # ROS画像をOpenCV形式に変換
+            cv_img = self.bridge.imgmsg_to_cv2(self.latest_image, "bgr8")
+            # 自前のONNX検出器で認識
+            return self.handle_detector.detect(cv_img)
+        except Exception as e:
+            rospy.logerr("画像変換または推論でエラー: " + str(e))
+            return []
+
+    # --- 以下、既存の関数 ---
 
     @staticmethod
     def get_path(pathes, package="wrs_algorithm"):
@@ -90,6 +259,7 @@ class WrsMainController(object):
         検出結果を受信する
         """
         rospy.loginfo("received [Collision detected with %s]", msg.data)
+
         self.detection_list.append(msg.data)
 
     def get_relative_coordinate(self, parent, child):
@@ -148,7 +318,7 @@ class WrsMainController(object):
 
     def get_latest_detection(self):
         """
-        最新の認識結果が到着するまで待つ
+        最新の認識結果が到着するまで待つ (既存の物体認識)
         """
         res = self.detection_clt(GetObjectDetectionRequest())
         return res.bboxes
@@ -230,8 +400,9 @@ class WrsMainController(object):
         """
         #TODO: 関数は未完成です。引数のinstructionを利用すること
         rospy.loginfo("[extract_target_obj_and_person] instruction:"+  instruction)
-        target_obj    = "apple"
-        target_person = "right"
+        instruction_words = instruction.split()
+        target_obj    = instruction_words[0]
+        target_person = instruction_words[3]
 
         return target_obj, target_person
 
@@ -269,6 +440,71 @@ class WrsMainController(object):
         gripper.command(0)
         whole_body.move_end_effector_pose(grasp_back_safe["x"], grasp_back_safe["y"], grasp_back_safe["z"], yaw, pitch, roll)
 
+    def get_most_likely_category(self, label):
+        label_words = label.split('_')
+
+        for ans_label in self.ORIENTATION_ITEM:
+            for label_word in label_words:
+                match = re.search(label_word, ans_label, re.IGNORECASE)
+                if match:
+                    pass
+                else:
+                    break
+            else:
+                return "ORIENTATION_ITEM"
+
+        for ans_label in self.FOOD_ITEM:
+            for label_word in label_words:
+                match = re.search(label_word, ans_label, re.IGNORECASE)
+                if match:
+                    pass
+                else:
+                    break
+            else:
+                return "FOOD_ITEM"
+            
+        for ans_label in self.KITCHEN_ITEM:
+            for label_word in label_words:
+                match = re.search(label_word, ans_label, re.IGNORECASE)
+                if match:
+                    pass
+                else:
+                    break
+            else:
+                return "KITCHEN_ITEM"
+
+        for ans_label in self.TOOL_ITEM:
+            for label_word in label_words:
+                match = re.search(label_word, ans_label, re.IGNORECASE)
+                if match:
+                    pass
+                else:
+                    break
+            else:
+                return "TOOL_ITEM"
+
+        for ans_label in self.SHAPE_ITEM:
+            for label_word in label_words:
+                match = re.search(label_word, ans_label, re.IGNORECASE)
+                if match:
+                    pass
+                else:
+                    break
+            else:
+                return "SHAPE_ITEM"
+
+        for ans_label in self.TASK_ITEM:
+            for label_word in label_words:
+                match = re.search(label_word, ans_label, re.IGNORECASE)
+                if match:
+                    pass
+                else:
+                    break
+            else:
+                return "TASK_ITEM"
+        
+        return "UNKNOWN"
+
     def grasp_from_front_side(self, grasp_pos):
         """
         正面把持を行う
@@ -286,6 +522,72 @@ class WrsMainController(object):
         grasp_pos.z += self.HAND_PALM_Z_OFFSET
         rospy.loginfo("grasp_from_upper_side (%.2f, %.2f, %.2f)",grasp_pos.x, grasp_pos.y, grasp_pos.z)
         self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -160, 0, "-y")
+
+
+    def grasp_from_left_side(self, grasp_pos):
+        """
+        棚の右端にある物体（例：mustard）を、
+        棚の前からロボットの右方向へ腕を伸ばして把持する。
+        = アームを +x 方向に斜め差し込みする
+        """
+
+        rospy.loginfo("grasp_from_left_side (%.2f, %.2f, %.2f)",
+                    grasp_pos.x, grasp_pos.y, grasp_pos.z)
+
+        # --- 安全オフセット（棚との干渉回避） ---
+        grasp_pos.y -= 0       # 手前に少し引く
+        grasp_pos.z += 0       # 少しだけ上げる（層板との衝突防止）
+        
+        # --- 斜め差し込みに必要な姿勢 ---
+        # yaw = 0°：手先をロボットの前ではなく右方向に向ける
+        # pitch = -100°：先端をやや下に向ける
+        # roll = 0°：水平維持
+        yaw   = -45        # 右方向
+        pitch = -100
+        roll  = 0
+
+        # preliminary="+x" → アームを右方向にバックさせて安全な軌道を確保
+        self.grasp_from_side(grasp_pos.x,grasp_pos.y,grasp_pos.z,yaw,pitch,roll,preliminary="-y")
+
+    def grasp_from_right_side(self, grasp_pos):
+        """
+        棚の左端の物体を棚前から左方向へ差し込んで把持
+        """
+        rospy.loginfo("grasp_from_right_side (%.2f, %.2f, %.2f)", 
+                    grasp_pos.x, grasp_pos.y, grasp_pos.z)
+
+        grasp_pos.y += 0
+        grasp_pos.z += 0
+
+        yaw   = 45   # 左方向へ向ける
+        pitch = -100
+        roll  = 0
+
+        # 左方向へ preliminary="-x"
+        self.grasp_from_side(grasp_pos.x,grasp_pos.y,grasp_pos.z,yaw,pitch,roll,preliminary="+y")
+
+    def grasp_from_front_side_with_body(self, grasp_pos, body_yaw_deg):
+        """
+        本体回転を考慮した正面把持（棚端の45度差し込み対応）
+        """
+
+        # 本体に対して正面へ差し込むには
+        # 手先 yaw を body_yaw_deg と同じにするのが最も“真正面”
+        yaw = body_yaw_deg      # ← ★ここが重要
+        pitch = -100
+        roll = 0
+
+        rospy.loginfo("grasp_from_front_side_with_body yaw=%.1f" % yaw)
+
+        self.grasp_from_side(
+            grasp_pos.x,
+            grasp_pos.y - self.HAND_PALM_OFFSET,
+            grasp_pos.z,
+            yaw,
+            pitch,
+            roll,
+            preliminary="-y"
+        )
 
     def exec_graspable_method(self, grasp_pos, label=""):
         """
@@ -325,16 +627,20 @@ class WrsMainController(object):
         self.change_pose("all_neutral")
 
     def pull_out_trofast(self, x, y, z, yaw, pitch, roll):
-        # trofastの引き出しを引き出す
-        self.goto_name("stair_like_drawer")
+
+        # trofastの引き出しを引き出す (座標微調整)
         self.change_pose("grasp_on_table")
-        a = True  # TODO 不要な変数
         gripper.command(1)
-        whole_body.move_end_effector_pose(x, y + self.TROFAST_Y_OFFSET, z, yaw, pitch, roll)
-        whole_body.move_end_effector_pose(x, y, z, yaw, pitch, roll)
-        gripper.command(0)
-        whole_body.move_end_effector_pose(x, y + self.TROFAST_Y_OFFSET, z, yaw,  pitch, roll)
-        gripper.command(1)
+        # ちょっと手前からアプローチ (X-0.05)
+        whole_body.move_end_effector_pose(x - 0.05, y, z, yaw, pitch, roll)
+        # 突っ込む (X+0.02)
+        whole_body.move_end_effector_pose(x + 0.02, y, z, yaw, pitch, roll)
+        gripper.command(0) # 掴む
+        # 引く (手前にバック X-0.25)
+        # Y軸方向のオフセット(TROFAST_Y_OFFSET)は状況によるが、基本は手前に引く
+        whole_body.move_end_effector_pose(x - 0.25, y + self.TROFAST_Y_OFFSET, z, yaw, pitch, roll)
+        gripper.command(1) # 離す
+
         self.change_pose("all_neutral")
 
     def push_in_trofast(self, pos_x, pos_y, pos_z, yaw, pitch, roll):
@@ -355,16 +661,19 @@ class WrsMainController(object):
 
         self.change_pose("all_neutral")
 
+    """
     def deliver_to_target(self, target_obj, target_person):
-        """
-        棚で取得したものを人に渡す。
-        """
+
+        # -----------------------------
+        # ① 棚へ移動
+        # -----------------------------
         self.change_pose("look_at_near_floor")
         self.goto_name("shelf")
         self.change_pose("look_at_shelf")
 
+
         rospy.loginfo("target_obj: " + target_obj + "  target_person: " + target_person)
-        # 物体検出結果から、把持するbboxを決定
+        # 物体検出結果から、把持するbboxを決定 (ここは既存の機能を使う)
         detected_objs = self.get_latest_detection()
         grasp_bbox = self.get_most_graspable_bboxes_by_label(detected_objs.bboxes, target_obj)
         if grasp_bbox is None:
@@ -379,28 +688,352 @@ class WrsMainController(object):
 
         # target_personの前に持っていく
         self.change_pose("look_at_near_floor")
-        self.goto_name("person_b")    # TODO: 配達先が固定されているので修正
+
+        if target_person == "right":
+            self.goto_name("person_b")    # TODO: 配達先が固定されているので修正
+        else:
+            self.goto_name("person_a")
+            
+        rospy.loginfo("target_obj: %s  target_person: %s",
+                    target_obj, target_person)
+
+        # -----------------------------
+        # ② 物体検出
+        # -----------------------------
+        detected_objs = self.get_latest_detection()
+        grasp_bbox = self.get_most_graspable_bboxes_by_label(
+            detected_objs.bboxes, target_obj
+        )
+        if grasp_bbox is None:
+            rospy.logwarn("Cannot find object. aborted.")
+            return
+
+        grasp_pos = self.get_grasp_coordinate(grasp_bbox)
+        rospy.loginfo("Object position: x=%.3f y=%.3f z=%.3f",
+                    grasp_pos.x, grasp_pos.y, grasp_pos.z)
+
+        # -----------------------------
+        # ③ 棚端なら x 方向を補正（前後移動）
+        # -----------------------------
+        # 棚中央の y の基準値
+        CENTER_Y = 4.40
+        # 端の判定
+        LEFT_EDGE_Y  = 4.55
+        RIGHT_EDGE_Y = 4.25
+
+        # 本来の棚位置
+        shelf_x, shelf_y, shelf_yaw = self.coordinates["positions"]["shelf"]
+
+        # x補正量（前後調整）
+        # 端であればx軸方向に5cm移動する
+        x_offset = 0.00
+
+        if grasp_pos.y > LEFT_EDGE_Y:     # 右端
+            rospy.loginfo("RIGHT edge detected → move closer by 5cm")
+            x_offset = +0.05    # 5cm 前進
+
+        elif grasp_pos.y < RIGHT_EDGE_Y:  # 左端
+            rospy.loginfo("LEFT edge detected → move closer by 5cm")
+            x_offset = +0.05    # 5cm 前進
+
+        else:
+            rospy.loginfo("CENTER → no position adjustment")
+
+
+        # 補正して棚の前に再度移動
+        adjusted_x = shelf_x + x_offset
+        omni_base.go_abs(adjusted_x, shelf_y, shelf_yaw)
+
+        # grasp_pos 補正する 
+        grasp_pos_corrected = type(grasp_pos)()
+        grasp_pos_corrected.x = grasp_pos.x
+        grasp_pos_corrected.y = grasp_pos.y
+        grasp_pos_corrected.z = grasp_pos.z
+
+        grasp_pos_corrected.x -= (x_offset-0.01)
+        rospy.loginfo("Corrected grasp pos: x=%.3f y=%.3f z=%.3f",
+                      grasp_pos_corrected.x, grasp_pos_corrected.y, grasp_pos_corrected.z)
+
+        # 正面から把持（補正後）
+
+        self.change_pose("grasp_on_shelf")
+        self.grasp_from_front_side(grasp_pos_corrected)
+        self.change_pose("all_neutral")
+
+        # 人に届ける
+        self.change_pose("look_at_near_floor")
+
+        if target_person == "right":
+            self.goto_name("person_b")
+        else:
+            self.goto_name("person_a")
+
+        self.change_pose("deliver_to_human")
+        rospy.sleep(10.0)
+        gripper.command(1)
+        self.change_pose("all_neutral")
+    """
+
+    def deliver_to_target(self, target_obj, target_person):
+
+        # 1. 棚へ移動
+        self.change_pose("look_at_near_floor")
+        self.goto_name("shelf")
+        self.change_pose("look_at_shelf")
+
+        rospy.loginfo("target_obj: %s  target_person: %s",
+                    target_obj, target_person)
+
+        # 2. 物体検出
+        detected_objs = self.get_latest_detection()
+        grasp_bbox = self.get_most_graspable_bboxes_by_label(
+            detected_objs.bboxes, target_obj
+        )
+        if grasp_bbox is None:
+            rospy.logwarn("Cannot find object. aborted.")
+            return
+
+        grasp_pos = self.get_grasp_coordinate(grasp_bbox)
+        rospy.loginfo("Object pos 3D: x=%.3f y=%.3f z=%.3f",
+                    grasp_pos.x, grasp_pos.y, grasp_pos.z)
+
+        # 3. 棚端なら x方向（左右）を補正
+        # 棚の中央（== coordinates.json の shelf.x）
+        shelf_x, shelf_y, shelf_yaw = self.coordinates["positions"]["shelf"]
+
+        CENTER_X = shelf_x              # 2.30
+        LEFT_EDGE_X  = CENTER_X - 0.15  # 2.15（棚の左端）
+        RIGHT_EDGE_X = CENTER_X + 0.15  # 2.45（棚の右端）
+
+        # ロボットが前後に近づくための x方向補正
+        # → grasp_from_front_side が奥へ差し込むので、棚により近づく
+        x_offset = 0.00
+
+        if grasp_pos.x < LEFT_EDGE_X:       # 棚の左端
+            rospy.loginfo("LEFT edge detected → move closer by 5cm")
+            x_offset = +0.05
+
+        elif grasp_pos.x > RIGHT_EDGE_X:    # 棚の右端
+            rospy.loginfo("RIGHT edge detected → move closer by 5cm")
+            x_offset = +0.05
+
+        else:
+            rospy.loginfo("CENTER area → No adjustment")
+
+        # 4. 補正した棚前地点へ再移動
+
+        adjusted_x = shelf_x + x_offset
+        omni_base.go_abs(adjusted_x, shelf_y, shelf_yaw)
+
+        # 5. grasp_pos もロボット基準で補正
+
+        grasp_pos_corrected = type(grasp_pos)()
+        grasp_pos_corrected.x = grasp_pos.x 
+        grasp_pos_corrected.y = grasp_pos.y #アームが奥に行き過ぎる場合はここを調整
+        grasp_pos_corrected.z = grasp_pos.z
+
+        rospy.loginfo("Corrected pos: x=%.3f y=%.3f z=%.3f",
+                    grasp_pos_corrected.x,
+                    grasp_pos_corrected.y,
+                    grasp_pos_corrected.z)
+
+        # 6.正面から把持
+
+        self.change_pose("grasp_on_shelf")
+        self.grasp_from_front_side(grasp_pos_corrected)
+        self.change_pose("all_neutral")
+
+        # 7. 人へ届ける
+        self.change_pose("look_at_near_floor")
+
+        if target_person == "right":
+            self.goto_name("person_b")
+        else:
+            self.goto_name("person_a")
         self.change_pose("deliver_to_human")
         rospy.sleep(10.0)
         gripper.command(1)
         self.change_pose("all_neutral")
 
+
+    def get_dist_point_to_segment(self, p, a, b):
+        """
+        点pと、線分abの最短距離を計算する
+        p, a, b はそれぞれ [x, y] のリストまたはオブジェクト
+        """
+        # ベクトル ap, ab
+        ap = [p[0] - a[0], p[1] - a[1]]
+        ab = [b[0] - a[0], b[1] - a[1]]
+        
+        # abの長さの2乗
+        len_ab_sq = ab[0]**2 + ab[1]**2
+        if len_ab_sq == 0:
+            # aとbが同じ場所にある場合
+            return math.sqrt(ap[0]**2 + ap[1]**2)
+
+        # 内積を使って、点pから線分への垂線の足の位置tを求める
+        t = (ap[0]*ab[0] + ap[1]*ab[1]) / len_ab_sq
+        
+        # tを0~1の範囲に収める（線分の内側に限定）
+        t = max(0, min(1, t))
+        
+        # 最短距離となる線分上の点 closest
+        closest = [a[0] + t*ab[0], a[1] + t*ab[1]]
+        
+        # pとclosestの距離を返す
+        return math.sqrt((p[0] - closest[0])**2 + (p[1] - closest[1])**2)
+
+    def is_path_safe(self, start_pos, target_pos):
+        """
+        startからtargetへの移動ルートが安全か判定する
+        """
+        # ロボットの幅(半径) + 余裕。
+        # 0.35mあれば、直径0.7mの筒が通れるかチェックすることになる
+        safety_radius = 0.35 
+
+        for obs in self.obstacle_memory:
+            obs_pos = [obs.x, obs.y]
+            dist = self.get_dist_point_to_segment(obs_pos, start_pos, target_pos)
+            
+            # 障害物がルートに近すぎるならNG
+            if dist < safety_radius:
+                return False
+        return True
+
+    def is_path_safety_margin(self, start_pos, target_pos):
+        """
+        startからtargetへの移動ルートにおいて、
+        「最も近い障害物との距離」を返す。
+        """
+        min_dist_found = 999.0 # 十分大きな値で初期化
+        
+        # 記憶している全障害物との距離をチェック
+        for obs in self.obstacle_memory:
+            obs_pos = [obs.x, obs.y]
+            
+            # 線分（移動ルート）と障害物の距離を計算
+            # ※ get_dist_point_to_segment は元のコードにある既存関数を利用
+            dist = self.get_dist_point_to_segment(obs_pos, start_pos, target_pos)
+            
+            # 記録されている中で「最もルートに近い障害物」までの距離を更新
+            if dist < min_dist_found:
+                min_dist_found = dist
+        
+        return min_dist_found
+
     def execute_avoid_blocks(self):
-        # blockを避ける
-        for i in range(3):
-            detected_objs = self.get_latest_detection()
-            bboxes = detected_objs.bboxes
-            pos_bboxes = [self.get_grasp_coordinate(bbox) for bbox in bboxes]
-            waypoint = self.select_next_waypoint(i, pos_bboxes)
-            # TODO メッセージを確認するためコメントアウトを外す
-            # rospy.loginfo(waypoint)
-            self.goto_pos(waypoint)
+        """
+        【修正・最終版】
+        1. 自分フィルタ追加 (半径0.35m以内は無視) ← NEW!
+        2. 止まらずに進む「突破型」ロジック
+        3. Y軸ステップ細分化 & X軸探索範囲拡大
+        """
+        rospy.loginfo("#### Start Advanced Lookahead Avoidance (Self-Filter Enabled) ####")
+
+        # 設定
+        y_steps = [2.2, 2.5, 2.8, 3.1, 3.5]
+        candidate_xs = [x * 0.02 for x in range(110, 151)] # 2.20m ~ 3.02m
+
+        # 現在地取得
+
+        current_pose = self.get_relative_coordinate("map", "base_footprint")
+        current_x = current_pose.translation.x
+        current_y = current_pose.translation.y
+
+        for i, target_y in enumerate(y_steps):
+            rospy.loginfo(f"--- Planning for Step {i+1} (Target Y={target_y}) ---")
+
+            # -------------------------------------------------
+            # 1. 認識
+            # -------------------------------------------------
+            head_tilts = [-0.5, -1.1] 
+            head_pans = [0.8, 0.0, -0.8] 
+
+            for tilt in head_tilts:
+                for pan in head_pans:
+                    whole_body.move_to_joint_positions({"head_tilt_joint": tilt, "head_pan_joint": pan})
+                    rospy.sleep(0.6)
+
+                    detected_objs = self.get_latest_detection()
+                    for bbox in detected_objs.bboxes:
+                        if bbox.score < 0.3: continue
+                        pos = self.get_grasp_coordinate(bbox)
+                        if pos is None: continue
+
+                        # 【追加】自分フィルタ
+                        # ロボット中心からの距離を計算
+                        dist_from_self = math.sqrt((current_x - pos.x)**2 + (current_y - pos.y)**2)
+                        
+                        # 半径35cm以内なら「自分」として無視
+                        if dist_from_self < 0.35:
+                            rospy.loginfo(f"Ignoring self/noise at ({pos.x:.2f}, {pos.y:.2f}), dist={dist_from_self:.2f}")
+                            continue
+
+                        # 既存の重複チェック
+                        is_known = False
+                        for mem in self.obstacle_memory:
+                            dist = math.sqrt((mem.x - pos.x)**2 + (mem.y - pos.y)**2)
+                            if dist < 0.3: 
+                                is_known = True
+                                break
+                        if not is_known:
+                            self.obstacle_memory.append(pos)
+                            rospy.loginfo(f"Obstacle added: ({pos.x:.2f}, {pos.y:.2f})")
+
+            # -------------------------------------------------
+            # 2. ルートプランニング (絶対に止まらない)
+            # -------------------------------------------------
+            if i + 1 < len(y_steps):
+                next_target_y = y_steps[i + 1]
+                is_last_step = False
+            else:
+                next_target_y = target_y + 0.5 
+                is_last_step = True
+            
+            best_x1 = None
+            max_route_score = -999.0 
+
+            for x1 in candidate_xs:
+                margin1 = self.is_path_safety_margin([current_x, current_y], [x1, target_y])
+                
+                route_score_for_x1 = -1.0
+                
+                if is_last_step:
+                    route_score_for_x1 = margin1
+                else:
+                    best_margin2 = -999.0
+                    for x2 in candidate_xs:
+                        margin2 = self.is_path_safety_margin([x1, target_y], [x2, next_target_y])
+                        if margin2 > best_margin2:
+                            best_margin2 = margin2
+                    
+                    route_score_for_x1 = min(margin1, best_margin2)
+
+                if route_score_for_x1 > max_route_score:
+                    max_route_score = route_score_for_x1
+                    best_x1 = x1
+
+            # -------------------------------------------------
+            # 3. 移動実行
+            # -------------------------------------------------
+            if best_x1 is not None:
+                if max_route_score < 0.22:
+                    rospy.logwarn(f"Narrow path: Margin={max_route_score:.3f}m")
+                else:
+                    rospy.loginfo(f"Safe path: Margin={max_route_score:.3f}m")
+                
+                self.goto_pos([best_x1, target_y, 90])
+                rospy.sleep(1.0)
+                current_x = best_x1
+                current_y = target_y
+            else:
+                # 万が一候補がない場合（理論上ありえないが）
+                rospy.logerr("CRITICAL: No candidates found. Staying.")
+
 
     def select_next_waypoint(self, current_stp, pos_bboxes):
         """
         waypoints から近い場所にあるものを除外し、最適なwaypointを返す。
-        x座標を原点に近い方からxa,xb,xcに定義する。bboxを判断基準として移動先を決定する(デフォルトは0.45間隔)
-        pos_bboxesは get_grasp_coordinate() 済みであること
         """
         interval = 0.45
         pos_xa = 1.7
@@ -412,27 +1045,39 @@ class WrsMainController(object):
             "xc": [ [pos_xc, 2.5, 135],   [pos_xc, 2.9, 135],  [pos_xc, 3.3, 90 ]]
         }
 
+        y_ranges = [[2.0, 2.8], [2.5, 3.2], [2.9, 3.6]]
+        current_y_min, current_y_max = y_ranges[current_stp]
+
         # posがxa,xb,xcのラインに近い場合は候補から削除
         is_to_xa = True
         is_to_xb = True
         is_to_xc = True
+
+        safety_margin = 0.28
+
         for bbox in pos_bboxes:
             pos_x = bbox.x
+            pos_y = bbox.y
+
+            # 今から通過しようとする物体以外は一旦無視する
+            if not (current_y_min < pos_y < current_y_max):
+                continue
+
+            rospy.loginfo("Checking obstacle at (x=%.2f, y=%.2f) for step %d", pos_x, pos_y, current_stp)
             # TODO デバッグ時にコメントアウトを外す
-            # rospy.loginfo("detected object obj.x = {:.2f}".format(bbox.x))
 
             # NOTE Hint:ｙ座標次第で無視してよいオブジェクトもある。
-            if pos_x < pos_xa + (interval/2):
+            if (pos_xa - safety_margin < pos_x < pos_xa + safety_margin):
                 is_to_xa = False
-                # rospy.loginfo("is_to_xa=False")
+                rospy.loginfo("is_to_xa=False")
                 continue
-            elif pos_x < pos_xb + (interval/2):
+            if (pos_xb - safety_margin < pos_x < pos_xb + safety_margin):
                 is_to_xb = False
-                # rospy.loginfo("is_to_xb=False")
+                rospy.loginfo("is_to_xb=False")
                 continue
-            elif pos_x < pos_xc + (interval/2):
+            if (pos_xc - safety_margin < pos_x < pos_xc + safety_margin):
                 is_to_xc = False
-                # rospy.loginfo("is_to_xc=False")
+                rospy.loginfo("is_to_xc=False")
                 continue
 
         x_line = None   # xa,xb,xcいずれかのリストが入る
@@ -452,6 +1097,83 @@ class WrsMainController(object):
             rospy.loginfo("select default waypoint")
 
         return x_line[current_stp]
+    
+    # ----------------------------------------------------------
+    #  【改造】ここだけ書き換え：自前のONNX検出を使って引き出しを開ける
+    # ----------------------------------------------------------
+    def open_all_drawers(self):
+        """
+        [改造版] YOLO(ONNX)で検出した座標を使って、3つの引き出しを全て開ける
+        """
+        rospy.loginfo("#### Opening All Drawers (YOLO/ONNX Mode) ####")
+        
+        # 1. 棚の前へ移動
+        self.goto_name("stair_like_drawer")
+        self.change_pose("look_at_near_floor")
+        rospy.sleep(2.0) # 画像安定待ち
+
+        # 2. 【重要】ここで既存の get_latest_detection ではなく、自作の detect_handles_onnx を使う
+        handles = self.detect_handles_onnx()
+        
+        rospy.loginfo("取っ手を %d 個 発見しました！", len(handles))
+
+        if not handles:
+            rospy.logwarn("取っ手が見つかりませんでした。best.onnxモデルまたはカメラを確認してください。")
+            return
+
+        # 3. 見つかった取っ手の「3次元座標」を全部計算する
+        # (既存の get_grasp_coordinate はそのまま再利用できる)
+        handle_positions = []
+        for bbox in handles:
+            pos = self.get_grasp_coordinate(bbox)
+            if pos:
+                handle_positions.append(pos)
+                rospy.loginfo("Handle Pos: x=%.2f, y=%.2f, z=%.2f", pos.x, pos.y, pos.z)
+
+        # 4. 座標をもとに「左」「上」「下」を自動判定する
+        drawer_left = None
+        drawer_top = None
+        drawer_bottom = None
+
+        
+        right_side_handles = []
+
+        for pos in handle_positions:
+            # ロボットから見て左(Y > 0.05) なら左の引き出し
+            if pos.y > 0.05: 
+                drawer_left = pos
+            else:
+                right_side_handles.append(pos)
+
+        # 右側にあるものを高さ(Z)が高い順に並べる
+        right_side_handles.sort(key=lambda p: p.z, reverse=True)
+
+        if len(right_side_handles) >= 1:
+            drawer_top = right_side_handles[0]
+        if len(right_side_handles) >= 2:
+            drawer_bottom = right_side_handles[1]
+
+        # 5. 判定できた場所を開けに行く
+        if drawer_left:
+            rospy.loginfo("【左】の引き出しを開けます")
+            self.pull_out_trofast(drawer_left.x, drawer_left.y, drawer_left.z, -90, 0, 0)
+        else:
+            rospy.logwarn("【警告】左の引き出しが見つかりませんでした")
+
+        if drawer_top:
+            rospy.loginfo("【右上】の引き出しを開けます")
+            self.pull_out_trofast(drawer_top.x, drawer_top.y, drawer_top.z, -90, 0, 0)
+        else:
+            rospy.logwarn("【警告】右上の引き出しが見つかりませんでした")
+
+        if drawer_bottom:
+            rospy.loginfo("【右下】の引き出しを開けます")
+            self.pull_out_trofast(drawer_bottom.x, drawer_bottom.y, drawer_bottom.z, -90, 0, 0)
+        else:
+            rospy.logwarn("【警告】右下の引き出しが見つかりませんでした")
+
+        rospy.loginfo("All drawers logic finished.")
+
 
     def execute_task1(self):
         """
@@ -464,9 +1186,11 @@ class WrsMainController(object):
             ("long_table_r", "look_at_tall_table"),
         ]
 
-        total_cnt = 0
+        food_cnt = 0
+        tool_cnt = 0
         for plc, pose in hsr_position:
-            for _ in range(self.DETECT_CNT):
+            # for _ in range(self.DETECT_CNT):
+            while True:
                 # 移動と視線指示
                 self.goto_name(plc)
                 self.change_pose(pose)
@@ -478,27 +1202,75 @@ class WrsMainController(object):
 
                 if graspable_obj is None:
                     rospy.logwarn("Cannot determine object to grasp. Grasping is aborted.")
-                    continue
+                    #continue
+                    break
+
                 label = graspable_obj["label"]
                 grasp_bbox = graspable_obj["bbox"]
                 # TODO ラベル名を確認するためにコメントアウトを外す
-                # rospy.loginfo("grasp the " + label)
+                rospy.loginfo("grasp the " + label)
 
                 # 把持対象がある場合は把持関数実施
                 grasp_pos = self.get_grasp_coordinate(grasp_bbox)
                 self.change_pose("grasp_on_table")
-                self.exec_graspable_method(grasp_pos, label)
+                is_success = self.exec_graspable_method(grasp_pos, label)
                 self.change_pose("all_neutral")
 
+                if not is_success:
+                    # ここで失敗した物体を除外する
+                    rospy.logwarn("Failed to grasp [%s]", label)
+                    if label not in self.IGNORE_LIST:
+                        self.IGNORE_LIST.append(label)
+                    break
+
+                most_likely_label = self.get_most_likely_category(label)
+                rospy.logwarn("検出ラベル[%s]のもっともらしいカテゴリは [%s]", label, most_likely_label)
                 # binに入れる
-                if total_cnt % 2 == 0:  self.put_in_place("bin_a_place", "put_in_bin")
-                else:  self.put_in_place("bin_b_place", "put_in_bin")
-                total_cnt += 1
+                if most_likely_label == "ORIENTATION_ITEM":
+                    rospy.loginfo("カテゴリ [Orientation] -> Container_B")
+                    self.put_in_place("container_B", "put_in_orientation_pose")
+                elif most_likely_label == "FOOD_ITEM":
+                    rospy.loginfo("カテゴリ [Food] -> Tray A / Tray B")
+                    if food_cnt % 2 == 0:
+                        self.put_in_place("tray_A", "put_in_tray_pose")
+                    else:
+                        self.put_in_place("tray_B", "put_in_tray_pose")
+                    food_cnt += 1 # Food専用カウンターを増やす
+                elif most_likely_label == "KITCHEN_ITEM":
+                    # カテゴリ: Kitchen items -> Container_A 
+                    rospy.loginfo("カテゴリ [Kitchen] -> Container A")
+                    self.put_in_place("container_A", "put_in_container_pose")
+
+                elif most_likely_label == "TOOL_ITEM":
+                    # カテゴリ: Tools -> Drawer_top / Drawer_bottom 
+                    rospy.loginfo("カテゴリ [Tools] -> Drawer Top / Bottom")
+                    if tool_cnt % 2 == 0:
+                        self.put_in_place("drawer_top", "put_in_drawer_pose")
+                    else:
+                        self.put_in_place("drawer_bottom", "put_in_drawer_pose")
+                    tool_cnt += 1 # Tool専用カウンターを増やす
+
+                elif most_likely_label == "SHAPE_ITEM":
+                    # カテゴリ: Shape items -> Drawer_left 
+                    rospy.loginfo("カテゴリ [Shape] -> Drawer left")
+                    self.put_in_place("drawer_left", "put_in_drawer_pose")
+
+                elif most_likely_label == "TASK_ITEM":
+                    # カテゴリ: Task items -> Bin_A 
+                    rospy.loginfo("カテゴリ [Task] -> Bin A")
+                    self.put_in_place("bin_a_place", "put_in_bin") # 既存のbin_a_placeを使用
+
+                else:
+                    # カテゴリ: Unknown objects -> Bin_B 
+                    rospy.logwarn("ラベル [%s] は分類外です。[Unknown] として Bin B に置きます。", label)
+                    self.put_in_place("bin_b_place", "put_in_bin") # 既存のbin_b_placeを使用
+
 
     def execute_task2a(self):
         """
         task2aを実行する
         """
+
         rospy.loginfo("#### start Task 2a ####")
         self.change_pose("look_at_near_floor")
         gripper.command(0)
@@ -536,9 +1308,16 @@ class WrsMainController(object):
         全てのタスクを実行する
         """
         self.change_pose("all_neutral")
+        
+
+        # 1. まず自前ONNXで引き出しを開ける
+        self.open_all_drawers()
+
+        # 2. その後、既存タスクを実行
         self.execute_task1()
-        #self.execute_task2a()
-        #self.execute_task2b()
+
+        self.execute_task2a()
+        self.execute_task2b()
 
 
 def main():

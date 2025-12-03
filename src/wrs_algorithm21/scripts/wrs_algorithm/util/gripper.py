@@ -30,3 +30,25 @@ def command(value):
     success = GRIPPER_CMD.go()
     rospy.sleep(6)
     return success
+<<<<<<< HEAD
+
+def get_current_gap():
+    """ sakura
+    現在のハンドの開き具合を取得する
+
+    Return
+    ------
+    float: 現在の関節値 (およそ0.0に近いほど閉じている)
+    """
+    # 現在の関節角度のリストを取得
+    # HSRのgripperグループは通常1つの主要な関節(hand_motor_joint)を持つため、
+    # リストの先頭[0]を取得すればOKです。
+    current_values = GRIPPER_CMD.get_current_joint_values()
+    
+    # 安全のためリストが空でないか確認
+    if len(current_values) > 0:
+        return current_values[0]
+    else:
+        return 0.0
+=======
+>>>>>>> origin/IR-B

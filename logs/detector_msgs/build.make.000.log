@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 [35m[1mScanning dependencies of target std_msgs_generate_messages_nodejs[0m
 [35m[1mScanning dependencies of target _detector_msgs_generate_messages_check_deps_AddTransformToManager[0m
 [35m[1mScanning dependencies of target _detector_msgs_generate_messages_check_deps_GetObjectDetection[0m
@@ -64,6 +65,74 @@
 [ 92%] Built target detector_msgs_generate_messages_cpp
 [ 96%] [34m[1mGenerating Python msg __init__.py for detector_msgs[0m
 [100%] [34m[1mGenerating Python srv __init__.py for detector_msgs[0m
+=======
+[35m[1mScanning dependencies of target _detector_msgs_generate_messages_check_deps_GetObjectDetection[0m
+[35m[1mScanning dependencies of target _detector_msgs_generate_messages_check_deps_BBoxArray[0m
+[35m[1mScanning dependencies of target geometry_msgs_generate_messages_lisp[0m
+[35m[1mScanning dependencies of target std_msgs_generate_messages_nodejs[0m
+[35m[1mScanning dependencies of target std_msgs_generate_messages_lisp[0m
+[35m[1mScanning dependencies of target _detector_msgs_generate_messages_check_deps_BBox[0m
+[35m[1mScanning dependencies of target geometry_msgs_generate_messages_eus[0m
+[35m[1mScanning dependencies of target std_msgs_generate_messages_cpp[0m
+[35m[1mScanning dependencies of target _detector_msgs_generate_messages_check_deps_AddTransformToManager[0m
+[35m[1mScanning dependencies of target geometry_msgs_generate_messages_py[0m
+[35m[1mScanning dependencies of target std_msgs_generate_messages_py[0m
+[35m[1mScanning dependencies of target _detector_msgs_generate_messages_check_deps_SetTransformFromBBox[0m
+[35m[1mScanning dependencies of target geometry_msgs_generate_messages_nodejs[0m
+[35m[1mScanning dependencies of target std_msgs_generate_messages_eus[0m
+[35m[1mScanning dependencies of target geometry_msgs_generate_messages_cpp[0m
+[  0%] Built target geometry_msgs_generate_messages_py
+[  0%] Built target std_msgs_generate_messages_lisp
+[  0%] Built target geometry_msgs_generate_messages_eus
+[  0%] Built target geometry_msgs_generate_messages_lisp
+[  0%] Built target std_msgs_generate_messages_cpp
+[  0%] Built target geometry_msgs_generate_messages_cpp
+[  0%] Built target geometry_msgs_generate_messages_nodejs
+[  0%] Built target std_msgs_generate_messages_nodejs
+[  0%] Built target std_msgs_generate_messages_eus
+[  0%] Built target std_msgs_generate_messages_py
+[  0%] Built target _detector_msgs_generate_messages_check_deps_GetObjectDetection
+[  0%] Built target _detector_msgs_generate_messages_check_deps_BBoxArray
+[  0%] Built target _detector_msgs_generate_messages_check_deps_SetTransformFromBBox
+[  0%] Built target _detector_msgs_generate_messages_check_deps_BBox
+[  0%] Built target _detector_msgs_generate_messages_check_deps_AddTransformToManager
+[35m[1mScanning dependencies of target detector_msgs_generate_messages_py[0m
+[35m[1mScanning dependencies of target detector_msgs_generate_messages_lisp[0m
+[35m[1mScanning dependencies of target detector_msgs_generate_messages_eus[0m
+[35m[1mScanning dependencies of target detector_msgs_generate_messages_cpp[0m
+[35m[1mScanning dependencies of target detector_msgs_generate_messages_nodejs[0m
+[  7%] [34m[1mGenerating Python from MSG detector_msgs/BBox[0m
+[  7%] [34m[1mGenerating Lisp code from detector_msgs/BBoxArray.msg[0m
+[ 10%] [34m[1mGenerating Lisp code from detector_msgs/SetTransformFromBBox.srv[0m
+[ 14%] [34m[1mGenerating Python from MSG detector_msgs/BBoxArray[0m
+[ 17%] [34m[1mGenerating EusLisp code from detector_msgs/BBoxArray.msg[0m
+[ 25%] [34m[1mGenerating Lisp code from detector_msgs/BBox.msg[0m
+[ 25%] [34m[1mGenerating Javascript code from detector_msgs/BBox.msg[0m
+[ 28%] [34m[1mGenerating EusLisp code from detector_msgs/SetTransformFromBBox.srv[0m
+[ 32%] [34m[1mGenerating Lisp code from detector_msgs/AddTransformToManager.srv[0m
+[ 35%] [34m[1mGenerating Lisp code from detector_msgs/GetObjectDetection.srv[0m
+[ 39%] [34m[1mGenerating Python code from SRV detector_msgs/AddTransformToManager[0m
+[ 42%] [34m[1mGenerating EusLisp code from detector_msgs/BBox.msg[0m
+[ 46%] [34m[1mGenerating C++ code from detector_msgs/BBoxArray.msg[0m
+[ 50%] [34m[1mGenerating C++ code from detector_msgs/BBox.msg[0m
+[ 53%] [34m[1mGenerating EusLisp code from detector_msgs/AddTransformToManager.srv[0m
+[ 57%] [34m[1mGenerating Python code from SRV detector_msgs/SetTransformFromBBox[0m
+[ 60%] [34m[1mGenerating Python code from SRV detector_msgs/GetObjectDetection[0m
+[ 64%] [34m[1mGenerating Javascript code from detector_msgs/BBoxArray.msg[0m
+[ 67%] [34m[1mGenerating EusLisp manifest code for detector_msgs[0m
+[ 71%] [34m[1mGenerating C++ code from detector_msgs/SetTransformFromBBox.srv[0m
+[ 75%] [34m[1mGenerating EusLisp code from detector_msgs/GetObjectDetection.srv[0m
+[ 75%] Built target detector_msgs_generate_messages_lisp
+[ 78%] [34m[1mGenerating C++ code from detector_msgs/AddTransformToManager.srv[0m
+[ 82%] [34m[1mGenerating Javascript code from detector_msgs/SetTransformFromBBox.srv[0m
+[ 85%] [34m[1mGenerating Javascript code from detector_msgs/AddTransformToManager.srv[0m
+[ 89%] [34m[1mGenerating Javascript code from detector_msgs/GetObjectDetection.srv[0m
+[ 92%] [34m[1mGenerating C++ code from detector_msgs/GetObjectDetection.srv[0m
+[ 92%] Built target detector_msgs_generate_messages_nodejs
+[100%] [34m[1mGenerating Python msg __init__.py for detector_msgs[0m
+[100%] [34m[1mGenerating Python srv __init__.py for detector_msgs[0m
+[100%] Built target detector_msgs_generate_messages_cpp
+>>>>>>> origin/IR-B
 [100%] Built target detector_msgs_generate_messages_py
 [100%] Built target detector_msgs_generate_messages_eus
 [35m[1mScanning dependencies of target detector_msgs_generate_messages[0m

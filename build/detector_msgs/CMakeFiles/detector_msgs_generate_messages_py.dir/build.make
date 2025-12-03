@@ -69,8 +69,13 @@ CMakeFiles/detector_msgs_generate_messages_py: /workspace/devel/.private/detecto
 
 /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/msg/_BBoxArray.py: /opt/ros/noetic/lib/genpy/genmsg_py.py
 /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/msg/_BBoxArray.py: /workspace/src/detector_msgs/msg/BBoxArray.msg
+<<<<<<< HEAD
 /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/msg/_BBoxArray.py: /workspace/src/detector_msgs/msg/BBox.msg
 /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/msg/_BBoxArray.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+=======
+/workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/msg/_BBoxArray.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+/workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/msg/_BBoxArray.py: /workspace/src/detector_msgs/msg/BBox.msg
+>>>>>>> origin/IR-B
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/workspace/build/detector_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Generating Python from MSG detector_msgs/BBoxArray"
 	catkin_generated/env_cached.sh /home/developer/.pyenv/versions/catkin_py3/bin/python3 /opt/ros/noetic/share/genpy/cmake/../../../lib/genpy/genmsg_py.py /workspace/src/detector_msgs/msg/BBoxArray.msg -Idetector_msgs:/workspace/src/detector_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -p detector_msgs -o /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/msg
 
@@ -83,18 +88,31 @@ CMakeFiles/detector_msgs_generate_messages_py: /workspace/devel/.private/detecto
 /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_AddTransformToManager.py: /opt/ros/noetic/lib/genpy/gensrv_py.py
 /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_AddTransformToManager.py: /workspace/src/detector_msgs/srv/AddTransformToManager.srv
 /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_AddTransformToManager.py: /opt/ros/noetic/share/geometry_msgs/msg/Quaternion.msg
+<<<<<<< HEAD
 /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_AddTransformToManager.py: /opt/ros/noetic/share/geometry_msgs/msg/TransformStamped.msg
 /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_AddTransformToManager.py: /opt/ros/noetic/share/geometry_msgs/msg/Transform.msg
 /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_AddTransformToManager.py: /opt/ros/noetic/share/geometry_msgs/msg/Vector3.msg
 /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_AddTransformToManager.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+=======
+/workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_AddTransformToManager.py: /opt/ros/noetic/share/geometry_msgs/msg/Transform.msg
+/workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_AddTransformToManager.py: /opt/ros/noetic/share/geometry_msgs/msg/TransformStamped.msg
+/workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_AddTransformToManager.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+/workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_AddTransformToManager.py: /opt/ros/noetic/share/geometry_msgs/msg/Vector3.msg
+>>>>>>> origin/IR-B
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/workspace/build/detector_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Generating Python code from SRV detector_msgs/AddTransformToManager"
 	catkin_generated/env_cached.sh /home/developer/.pyenv/versions/catkin_py3/bin/python3 /opt/ros/noetic/share/genpy/cmake/../../../lib/genpy/gensrv_py.py /workspace/src/detector_msgs/srv/AddTransformToManager.srv -Idetector_msgs:/workspace/src/detector_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -p detector_msgs -o /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv
 
 /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_GetObjectDetection.py: /opt/ros/noetic/lib/genpy/gensrv_py.py
 /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_GetObjectDetection.py: /workspace/src/detector_msgs/srv/GetObjectDetection.srv
+<<<<<<< HEAD
 /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_GetObjectDetection.py: /workspace/src/detector_msgs/msg/BBox.msg
 /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_GetObjectDetection.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_GetObjectDetection.py: /workspace/src/detector_msgs/msg/BBoxArray.msg
+=======
+/workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_GetObjectDetection.py: /workspace/src/detector_msgs/msg/BBoxArray.msg
+/workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_GetObjectDetection.py: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+/workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv/_GetObjectDetection.py: /workspace/src/detector_msgs/msg/BBox.msg
+>>>>>>> origin/IR-B
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/workspace/build/detector_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Generating Python code from SRV detector_msgs/GetObjectDetection"
 	catkin_generated/env_cached.sh /home/developer/.pyenv/versions/catkin_py3/bin/python3 /opt/ros/noetic/share/genpy/cmake/../../../lib/genpy/gensrv_py.py /workspace/src/detector_msgs/srv/GetObjectDetection.srv -Idetector_msgs:/workspace/src/detector_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -p detector_msgs -o /workspace/devel/.private/detector_msgs/lib/python3/dist-packages/detector_msgs/srv
 

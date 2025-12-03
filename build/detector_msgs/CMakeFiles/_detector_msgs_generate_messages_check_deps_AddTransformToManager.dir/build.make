@@ -54,7 +54,11 @@ CMAKE_BINARY_DIR = /workspace/build/detector_msgs
 include CMakeFiles/_detector_msgs_generate_messages_check_deps_AddTransformToManager.dir/progress.make
 
 CMakeFiles/_detector_msgs_generate_messages_check_deps_AddTransformToManager:
+<<<<<<< HEAD
 	catkin_generated/env_cached.sh /home/developer/.pyenv/versions/catkin_py3/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py detector_msgs /workspace/src/detector_msgs/srv/AddTransformToManager.srv geometry_msgs/Quaternion:geometry_msgs/TransformStamped:geometry_msgs/Transform:geometry_msgs/Vector3:std_msgs/Header
+=======
+	catkin_generated/env_cached.sh /home/developer/.pyenv/versions/catkin_py3/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py detector_msgs /workspace/src/detector_msgs/srv/AddTransformToManager.srv geometry_msgs/Quaternion:geometry_msgs/Transform:geometry_msgs/TransformStamped:std_msgs/Header:geometry_msgs/Vector3
+>>>>>>> origin/IR-B
 
 _detector_msgs_generate_messages_check_deps_AddTransformToManager: CMakeFiles/_detector_msgs_generate_messages_check_deps_AddTransformToManager
 _detector_msgs_generate_messages_check_deps_AddTransformToManager: CMakeFiles/_detector_msgs_generate_messages_check_deps_AddTransformToManager.dir/build.make
