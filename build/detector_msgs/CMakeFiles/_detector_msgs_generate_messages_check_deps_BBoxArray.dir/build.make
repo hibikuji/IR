@@ -54,7 +54,11 @@ CMAKE_BINARY_DIR = /workspace/build/detector_msgs
 include CMakeFiles/_detector_msgs_generate_messages_check_deps_BBoxArray.dir/progress.make
 
 CMakeFiles/_detector_msgs_generate_messages_check_deps_BBoxArray:
+<<<<<<< HEAD
 	catkin_generated/env_cached.sh /home/developer/.pyenv/versions/catkin_py3/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py detector_msgs /workspace/src/detector_msgs/msg/BBoxArray.msg detector_msgs/BBox:std_msgs/Header
+=======
+	catkin_generated/env_cached.sh /home/developer/.pyenv/versions/catkin_py3/bin/python3 /opt/ros/noetic/share/genmsg/cmake/../../../lib/genmsg/genmsg_check_deps.py detector_msgs /workspace/src/detector_msgs/msg/BBoxArray.msg std_msgs/Header:detector_msgs/BBox
+>>>>>>> origin/IR-B
 
 _detector_msgs_generate_messages_check_deps_BBoxArray: CMakeFiles/_detector_msgs_generate_messages_check_deps_BBoxArray
 _detector_msgs_generate_messages_check_deps_BBoxArray: CMakeFiles/_detector_msgs_generate_messages_check_deps_BBoxArray.dir/build.make

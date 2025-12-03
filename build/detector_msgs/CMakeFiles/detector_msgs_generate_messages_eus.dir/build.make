@@ -68,8 +68,13 @@ CMakeFiles/detector_msgs_generate_messages_eus: /workspace/devel/.private/detect
 
 /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/msg/BBoxArray.l: /opt/ros/noetic/lib/geneus/gen_eus.py
 /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/msg/BBoxArray.l: /workspace/src/detector_msgs/msg/BBoxArray.msg
+<<<<<<< HEAD
 /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/msg/BBoxArray.l: /workspace/src/detector_msgs/msg/BBox.msg
 /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/msg/BBoxArray.l: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+=======
+/workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/msg/BBoxArray.l: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+/workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/msg/BBoxArray.l: /workspace/src/detector_msgs/msg/BBox.msg
+>>>>>>> origin/IR-B
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/workspace/build/detector_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Generating EusLisp code from detector_msgs/BBoxArray.msg"
 	catkin_generated/env_cached.sh /home/developer/.pyenv/versions/catkin_py3/bin/python3 /opt/ros/noetic/share/geneus/cmake/../../../lib/geneus/gen_eus.py /workspace/src/detector_msgs/msg/BBoxArray.msg -Idetector_msgs:/workspace/src/detector_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -p detector_msgs -o /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/msg
 
@@ -82,18 +87,31 @@ CMakeFiles/detector_msgs_generate_messages_eus: /workspace/devel/.private/detect
 /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/AddTransformToManager.l: /opt/ros/noetic/lib/geneus/gen_eus.py
 /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/AddTransformToManager.l: /workspace/src/detector_msgs/srv/AddTransformToManager.srv
 /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/AddTransformToManager.l: /opt/ros/noetic/share/geometry_msgs/msg/Quaternion.msg
+<<<<<<< HEAD
 /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/AddTransformToManager.l: /opt/ros/noetic/share/geometry_msgs/msg/TransformStamped.msg
 /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/AddTransformToManager.l: /opt/ros/noetic/share/geometry_msgs/msg/Transform.msg
 /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/AddTransformToManager.l: /opt/ros/noetic/share/geometry_msgs/msg/Vector3.msg
 /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/AddTransformToManager.l: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+=======
+/workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/AddTransformToManager.l: /opt/ros/noetic/share/geometry_msgs/msg/Transform.msg
+/workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/AddTransformToManager.l: /opt/ros/noetic/share/geometry_msgs/msg/TransformStamped.msg
+/workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/AddTransformToManager.l: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+/workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/AddTransformToManager.l: /opt/ros/noetic/share/geometry_msgs/msg/Vector3.msg
+>>>>>>> origin/IR-B
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/workspace/build/detector_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Generating EusLisp code from detector_msgs/AddTransformToManager.srv"
 	catkin_generated/env_cached.sh /home/developer/.pyenv/versions/catkin_py3/bin/python3 /opt/ros/noetic/share/geneus/cmake/../../../lib/geneus/gen_eus.py /workspace/src/detector_msgs/srv/AddTransformToManager.srv -Idetector_msgs:/workspace/src/detector_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -p detector_msgs -o /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv
 
 /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/GetObjectDetection.l: /opt/ros/noetic/lib/geneus/gen_eus.py
 /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/GetObjectDetection.l: /workspace/src/detector_msgs/srv/GetObjectDetection.srv
+<<<<<<< HEAD
 /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/GetObjectDetection.l: /workspace/src/detector_msgs/msg/BBox.msg
 /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/GetObjectDetection.l: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/GetObjectDetection.l: /workspace/src/detector_msgs/msg/BBoxArray.msg
+=======
+/workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/GetObjectDetection.l: /workspace/src/detector_msgs/msg/BBoxArray.msg
+/workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/GetObjectDetection.l: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+/workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv/GetObjectDetection.l: /workspace/src/detector_msgs/msg/BBox.msg
+>>>>>>> origin/IR-B
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/workspace/build/detector_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Generating EusLisp code from detector_msgs/GetObjectDetection.srv"
 	catkin_generated/env_cached.sh /home/developer/.pyenv/versions/catkin_py3/bin/python3 /opt/ros/noetic/share/geneus/cmake/../../../lib/geneus/gen_eus.py /workspace/src/detector_msgs/srv/GetObjectDetection.srv -Idetector_msgs:/workspace/src/detector_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -p detector_msgs -o /workspace/devel/.private/detector_msgs/share/roseus/ros/detector_msgs/srv
 

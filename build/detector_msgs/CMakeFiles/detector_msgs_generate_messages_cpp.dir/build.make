@@ -68,8 +68,13 @@ CMakeFiles/detector_msgs_generate_messages_cpp: /workspace/devel/.private/detect
 
 /workspace/devel/.private/detector_msgs/include/detector_msgs/BBoxArray.h: /opt/ros/noetic/lib/gencpp/gen_cpp.py
 /workspace/devel/.private/detector_msgs/include/detector_msgs/BBoxArray.h: /workspace/src/detector_msgs/msg/BBoxArray.msg
+<<<<<<< HEAD
 /workspace/devel/.private/detector_msgs/include/detector_msgs/BBoxArray.h: /workspace/src/detector_msgs/msg/BBox.msg
 /workspace/devel/.private/detector_msgs/include/detector_msgs/BBoxArray.h: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+=======
+/workspace/devel/.private/detector_msgs/include/detector_msgs/BBoxArray.h: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+/workspace/devel/.private/detector_msgs/include/detector_msgs/BBoxArray.h: /workspace/src/detector_msgs/msg/BBox.msg
+>>>>>>> origin/IR-B
 /workspace/devel/.private/detector_msgs/include/detector_msgs/BBoxArray.h: /opt/ros/noetic/share/gencpp/msg.h.template
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/workspace/build/detector_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Generating C++ code from detector_msgs/BBoxArray.msg"
 	cd /workspace/src/detector_msgs && /workspace/build/detector_msgs/catkin_generated/env_cached.sh /home/developer/.pyenv/versions/catkin_py3/bin/python3 /opt/ros/noetic/share/gencpp/cmake/../../../lib/gencpp/gen_cpp.py /workspace/src/detector_msgs/msg/BBoxArray.msg -Idetector_msgs:/workspace/src/detector_msgs/msg -Istd_msgs:/opt/ros/noetic/share/std_msgs/cmake/../msg -Igeometry_msgs:/opt/ros/noetic/share/geometry_msgs/cmake/../msg -p detector_msgs -o /workspace/devel/.private/detector_msgs/include/detector_msgs -e /opt/ros/noetic/share/gencpp/cmake/..
@@ -85,10 +90,17 @@ CMakeFiles/detector_msgs_generate_messages_cpp: /workspace/devel/.private/detect
 /workspace/devel/.private/detector_msgs/include/detector_msgs/AddTransformToManager.h: /opt/ros/noetic/lib/gencpp/gen_cpp.py
 /workspace/devel/.private/detector_msgs/include/detector_msgs/AddTransformToManager.h: /workspace/src/detector_msgs/srv/AddTransformToManager.srv
 /workspace/devel/.private/detector_msgs/include/detector_msgs/AddTransformToManager.h: /opt/ros/noetic/share/geometry_msgs/msg/Quaternion.msg
+<<<<<<< HEAD
 /workspace/devel/.private/detector_msgs/include/detector_msgs/AddTransformToManager.h: /opt/ros/noetic/share/geometry_msgs/msg/TransformStamped.msg
 /workspace/devel/.private/detector_msgs/include/detector_msgs/AddTransformToManager.h: /opt/ros/noetic/share/geometry_msgs/msg/Transform.msg
 /workspace/devel/.private/detector_msgs/include/detector_msgs/AddTransformToManager.h: /opt/ros/noetic/share/geometry_msgs/msg/Vector3.msg
 /workspace/devel/.private/detector_msgs/include/detector_msgs/AddTransformToManager.h: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+=======
+/workspace/devel/.private/detector_msgs/include/detector_msgs/AddTransformToManager.h: /opt/ros/noetic/share/geometry_msgs/msg/Transform.msg
+/workspace/devel/.private/detector_msgs/include/detector_msgs/AddTransformToManager.h: /opt/ros/noetic/share/geometry_msgs/msg/TransformStamped.msg
+/workspace/devel/.private/detector_msgs/include/detector_msgs/AddTransformToManager.h: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+/workspace/devel/.private/detector_msgs/include/detector_msgs/AddTransformToManager.h: /opt/ros/noetic/share/geometry_msgs/msg/Vector3.msg
+>>>>>>> origin/IR-B
 /workspace/devel/.private/detector_msgs/include/detector_msgs/AddTransformToManager.h: /opt/ros/noetic/share/gencpp/msg.h.template
 /workspace/devel/.private/detector_msgs/include/detector_msgs/AddTransformToManager.h: /opt/ros/noetic/share/gencpp/srv.h.template
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/workspace/build/detector_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Generating C++ code from detector_msgs/AddTransformToManager.srv"
@@ -96,9 +108,15 @@ CMakeFiles/detector_msgs_generate_messages_cpp: /workspace/devel/.private/detect
 
 /workspace/devel/.private/detector_msgs/include/detector_msgs/GetObjectDetection.h: /opt/ros/noetic/lib/gencpp/gen_cpp.py
 /workspace/devel/.private/detector_msgs/include/detector_msgs/GetObjectDetection.h: /workspace/src/detector_msgs/srv/GetObjectDetection.srv
+<<<<<<< HEAD
 /workspace/devel/.private/detector_msgs/include/detector_msgs/GetObjectDetection.h: /workspace/src/detector_msgs/msg/BBox.msg
 /workspace/devel/.private/detector_msgs/include/detector_msgs/GetObjectDetection.h: /opt/ros/noetic/share/std_msgs/msg/Header.msg
 /workspace/devel/.private/detector_msgs/include/detector_msgs/GetObjectDetection.h: /workspace/src/detector_msgs/msg/BBoxArray.msg
+=======
+/workspace/devel/.private/detector_msgs/include/detector_msgs/GetObjectDetection.h: /workspace/src/detector_msgs/msg/BBoxArray.msg
+/workspace/devel/.private/detector_msgs/include/detector_msgs/GetObjectDetection.h: /opt/ros/noetic/share/std_msgs/msg/Header.msg
+/workspace/devel/.private/detector_msgs/include/detector_msgs/GetObjectDetection.h: /workspace/src/detector_msgs/msg/BBox.msg
+>>>>>>> origin/IR-B
 /workspace/devel/.private/detector_msgs/include/detector_msgs/GetObjectDetection.h: /opt/ros/noetic/share/gencpp/msg.h.template
 /workspace/devel/.private/detector_msgs/include/detector_msgs/GetObjectDetection.h: /opt/ros/noetic/share/gencpp/srv.h.template
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --blue --bold --progress-dir=/workspace/build/detector_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Generating C++ code from detector_msgs/GetObjectDetection.srv"

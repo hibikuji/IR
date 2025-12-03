@@ -18,7 +18,6 @@ import cv2
 import numpy as np
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image
-
 from std_msgs.msg import String
 from detector_msgs.srv import (
     SetTransformFromBBox, SetTransformFromBBoxRequest,
@@ -27,7 +26,6 @@ from detector_msgs.msg import BBox
 from wrs_algorithm.util import omni_base, whole_body, gripper
 import math
 import re
-
 
 # ==========================================================
 # 【追加】取っ手専用：YOLO(ONNX)をOpenCVだけで動かすクラス
@@ -114,7 +112,6 @@ class HandleDetectorONNX(object):
                 
         return results
 
-
 class WrsMainController(object):
     """
     WRSのシミュレーション環境内でタスクを実行するクラス
@@ -179,6 +176,7 @@ class WrsMainController(object):
         tf_from_bbox_srv_name = "set_tf_from_bbox"
         rospy.wait_for_service(tf_from_bbox_srv_name)
         self.tf_from_bbox_clt = rospy.ServiceProxy(tf_from_bbox_srv_name, SetTransformFromBBox)
+
 
         # 既存の物体認識サービス（そのまま残す）
         obj_detection_name = "detection/get_object_detection"
@@ -261,6 +259,7 @@ class WrsMainController(object):
         検出結果を受信する
         """
         rospy.loginfo("received [Collision detected with %s]", msg.data)
+
         self.detection_list.append(msg.data)
 
     def get_relative_coordinate(self, parent, child):
@@ -524,6 +523,72 @@ class WrsMainController(object):
         rospy.loginfo("grasp_from_upper_side (%.2f, %.2f, %.2f)",grasp_pos.x, grasp_pos.y, grasp_pos.z)
         self.grasp_from_side(grasp_pos.x, grasp_pos.y, grasp_pos.z, -90, -160, 0, "-y")
 
+
+    def grasp_from_left_side(self, grasp_pos):
+        """
+        棚の右端にある物体（例：mustard）を、
+        棚の前からロボットの右方向へ腕を伸ばして把持する。
+        = アームを +x 方向に斜め差し込みする
+        """
+
+        rospy.loginfo("grasp_from_left_side (%.2f, %.2f, %.2f)",
+                    grasp_pos.x, grasp_pos.y, grasp_pos.z)
+
+        # --- 安全オフセット（棚との干渉回避） ---
+        grasp_pos.y -= 0       # 手前に少し引く
+        grasp_pos.z += 0       # 少しだけ上げる（層板との衝突防止）
+        
+        # --- 斜め差し込みに必要な姿勢 ---
+        # yaw = 0°：手先をロボットの前ではなく右方向に向ける
+        # pitch = -100°：先端をやや下に向ける
+        # roll = 0°：水平維持
+        yaw   = -45        # 右方向
+        pitch = -100
+        roll  = 0
+
+        # preliminary="+x" → アームを右方向にバックさせて安全な軌道を確保
+        self.grasp_from_side(grasp_pos.x,grasp_pos.y,grasp_pos.z,yaw,pitch,roll,preliminary="-y")
+
+    def grasp_from_right_side(self, grasp_pos):
+        """
+        棚の左端の物体を棚前から左方向へ差し込んで把持
+        """
+        rospy.loginfo("grasp_from_right_side (%.2f, %.2f, %.2f)", 
+                    grasp_pos.x, grasp_pos.y, grasp_pos.z)
+
+        grasp_pos.y += 0
+        grasp_pos.z += 0
+
+        yaw   = 45   # 左方向へ向ける
+        pitch = -100
+        roll  = 0
+
+        # 左方向へ preliminary="-x"
+        self.grasp_from_side(grasp_pos.x,grasp_pos.y,grasp_pos.z,yaw,pitch,roll,preliminary="+y")
+
+    def grasp_from_front_side_with_body(self, grasp_pos, body_yaw_deg):
+        """
+        本体回転を考慮した正面把持（棚端の45度差し込み対応）
+        """
+
+        # 本体に対して正面へ差し込むには
+        # 手先 yaw を body_yaw_deg と同じにするのが最も“真正面”
+        yaw = body_yaw_deg      # ← ★ここが重要
+        pitch = -100
+        roll = 0
+
+        rospy.loginfo("grasp_from_front_side_with_body yaw=%.1f" % yaw)
+
+        self.grasp_from_side(
+            grasp_pos.x,
+            grasp_pos.y - self.HAND_PALM_OFFSET,
+            grasp_pos.z,
+            yaw,
+            pitch,
+            roll,
+            preliminary="-y"
+        )
+
     def exec_graspable_method(self, grasp_pos, label=""):
         """
         task1専用:posの位置によって把持方法を判定し実行する。
@@ -562,6 +627,7 @@ class WrsMainController(object):
         self.change_pose("all_neutral")
 
     def pull_out_trofast(self, x, y, z, yaw, pitch, roll):
+
         # trofastの引き出しを引き出す (座標微調整)
         self.change_pose("grasp_on_table")
         gripper.command(1)
@@ -574,6 +640,7 @@ class WrsMainController(object):
         # Y軸方向のオフセット(TROFAST_Y_OFFSET)は状況によるが、基本は手前に引く
         whole_body.move_end_effector_pose(x - 0.25, y + self.TROFAST_Y_OFFSET, z, yaw, pitch, roll)
         gripper.command(1) # 離す
+
         self.change_pose("all_neutral")
 
     def push_in_trofast(self, pos_x, pos_y, pos_z, yaw, pitch, roll):
@@ -594,13 +661,16 @@ class WrsMainController(object):
 
         self.change_pose("all_neutral")
 
+    """
     def deliver_to_target(self, target_obj, target_person):
-        """
-        棚で取得したものを人に渡す。
-        """
+
+        # -----------------------------
+        # ① 棚へ移動
+        # -----------------------------
         self.change_pose("look_at_near_floor")
         self.goto_name("shelf")
         self.change_pose("look_at_shelf")
+
 
         rospy.loginfo("target_obj: " + target_obj + "  target_person: " + target_person)
         # 物体検出結果から、把持するbboxを決定 (ここは既存の機能を使う)
@@ -624,10 +694,167 @@ class WrsMainController(object):
         else:
             self.goto_name("person_a")
             
+        rospy.loginfo("target_obj: %s  target_person: %s",
+                    target_obj, target_person)
+
+        # -----------------------------
+        # ② 物体検出
+        # -----------------------------
+        detected_objs = self.get_latest_detection()
+        grasp_bbox = self.get_most_graspable_bboxes_by_label(
+            detected_objs.bboxes, target_obj
+        )
+        if grasp_bbox is None:
+            rospy.logwarn("Cannot find object. aborted.")
+            return
+
+        grasp_pos = self.get_grasp_coordinate(grasp_bbox)
+        rospy.loginfo("Object position: x=%.3f y=%.3f z=%.3f",
+                    grasp_pos.x, grasp_pos.y, grasp_pos.z)
+
+        # -----------------------------
+        # ③ 棚端なら x 方向を補正（前後移動）
+        # -----------------------------
+        # 棚中央の y の基準値
+        CENTER_Y = 4.40
+        # 端の判定
+        LEFT_EDGE_Y  = 4.55
+        RIGHT_EDGE_Y = 4.25
+
+        # 本来の棚位置
+        shelf_x, shelf_y, shelf_yaw = self.coordinates["positions"]["shelf"]
+
+        # x補正量（前後調整）
+        # 端であればx軸方向に5cm移動する
+        x_offset = 0.00
+
+        if grasp_pos.y > LEFT_EDGE_Y:     # 右端
+            rospy.loginfo("RIGHT edge detected → move closer by 5cm")
+            x_offset = +0.05    # 5cm 前進
+
+        elif grasp_pos.y < RIGHT_EDGE_Y:  # 左端
+            rospy.loginfo("LEFT edge detected → move closer by 5cm")
+            x_offset = +0.05    # 5cm 前進
+
+        else:
+            rospy.loginfo("CENTER → no position adjustment")
+
+
+        # 補正して棚の前に再度移動
+        adjusted_x = shelf_x + x_offset
+        omni_base.go_abs(adjusted_x, shelf_y, shelf_yaw)
+
+        # grasp_pos 補正する 
+        grasp_pos_corrected = type(grasp_pos)()
+        grasp_pos_corrected.x = grasp_pos.x
+        grasp_pos_corrected.y = grasp_pos.y
+        grasp_pos_corrected.z = grasp_pos.z
+
+        grasp_pos_corrected.x -= (x_offset-0.01)
+        rospy.loginfo("Corrected grasp pos: x=%.3f y=%.3f z=%.3f",
+                      grasp_pos_corrected.x, grasp_pos_corrected.y, grasp_pos_corrected.z)
+
+        # 正面から把持（補正後）
+
+        self.change_pose("grasp_on_shelf")
+        self.grasp_from_front_side(grasp_pos_corrected)
+        self.change_pose("all_neutral")
+
+        # 人に届ける
+        self.change_pose("look_at_near_floor")
+
+        if target_person == "right":
+            self.goto_name("person_b")
+        else:
+            self.goto_name("person_a")
+
         self.change_pose("deliver_to_human")
         rospy.sleep(10.0)
         gripper.command(1)
         self.change_pose("all_neutral")
+    """
+
+    def deliver_to_target(self, target_obj, target_person):
+
+        # 1. 棚へ移動
+        self.change_pose("look_at_near_floor")
+        self.goto_name("shelf")
+        self.change_pose("look_at_shelf")
+
+        rospy.loginfo("target_obj: %s  target_person: %s",
+                    target_obj, target_person)
+
+        # 2. 物体検出
+        detected_objs = self.get_latest_detection()
+        grasp_bbox = self.get_most_graspable_bboxes_by_label(
+            detected_objs.bboxes, target_obj
+        )
+        if grasp_bbox is None:
+            rospy.logwarn("Cannot find object. aborted.")
+            return
+
+        grasp_pos = self.get_grasp_coordinate(grasp_bbox)
+        rospy.loginfo("Object pos 3D: x=%.3f y=%.3f z=%.3f",
+                    grasp_pos.x, grasp_pos.y, grasp_pos.z)
+
+        # 3. 棚端なら x方向（左右）を補正
+        # 棚の中央（== coordinates.json の shelf.x）
+        shelf_x, shelf_y, shelf_yaw = self.coordinates["positions"]["shelf"]
+
+        CENTER_X = shelf_x              # 2.30
+        LEFT_EDGE_X  = CENTER_X - 0.15  # 2.15（棚の左端）
+        RIGHT_EDGE_X = CENTER_X + 0.15  # 2.45（棚の右端）
+
+        # ロボットが前後に近づくための x方向補正
+        # → grasp_from_front_side が奥へ差し込むので、棚により近づく
+        x_offset = 0.00
+
+        if grasp_pos.x < LEFT_EDGE_X:       # 棚の左端
+            rospy.loginfo("LEFT edge detected → move closer by 5cm")
+            x_offset = +0.05
+
+        elif grasp_pos.x > RIGHT_EDGE_X:    # 棚の右端
+            rospy.loginfo("RIGHT edge detected → move closer by 5cm")
+            x_offset = +0.05
+
+        else:
+            rospy.loginfo("CENTER area → No adjustment")
+
+        # 4. 補正した棚前地点へ再移動
+
+        adjusted_x = shelf_x + x_offset
+        omni_base.go_abs(adjusted_x, shelf_y, shelf_yaw)
+
+        # 5. grasp_pos もロボット基準で補正
+
+        grasp_pos_corrected = type(grasp_pos)()
+        grasp_pos_corrected.x = grasp_pos.x 
+        grasp_pos_corrected.y = grasp_pos.y #アームが奥に行き過ぎる場合はここを調整
+        grasp_pos_corrected.z = grasp_pos.z
+
+        rospy.loginfo("Corrected pos: x=%.3f y=%.3f z=%.3f",
+                    grasp_pos_corrected.x,
+                    grasp_pos_corrected.y,
+                    grasp_pos_corrected.z)
+
+        # 6.正面から把持
+
+        self.change_pose("grasp_on_shelf")
+        self.grasp_from_front_side(grasp_pos_corrected)
+        self.change_pose("all_neutral")
+
+        # 7. 人へ届ける
+        self.change_pose("look_at_near_floor")
+
+        if target_person == "right":
+            self.goto_name("person_b")
+        else:
+            self.goto_name("person_a")
+        self.change_pose("deliver_to_human")
+        rospy.sleep(10.0)
+        gripper.command(1)
+        self.change_pose("all_neutral")
+
 
     def get_dist_point_to_segment(self, p, a, b):
         """
@@ -672,7 +899,7 @@ class WrsMainController(object):
             if dist < safety_radius:
                 return False
         return True
-    
+
     def is_path_safety_margin(self, start_pos, target_pos):
         """
         startからtargetへの移動ルートにおいて、
@@ -708,6 +935,7 @@ class WrsMainController(object):
         candidate_xs = [x * 0.02 for x in range(110, 151)] # 2.20m ~ 3.02m
 
         # 現在地取得
+
         current_pose = self.get_relative_coordinate("map", "base_footprint")
         current_x = current_pose.translation.x
         current_y = current_pose.translation.y
@@ -801,6 +1029,7 @@ class WrsMainController(object):
             else:
                 # 万が一候補がない場合（理論上ありえないが）
                 rospy.logerr("CRITICAL: No candidates found. Staying.")
+
 
     def select_next_waypoint(self, current_stp, pos_bboxes):
         """
@@ -1041,6 +1270,7 @@ class WrsMainController(object):
         """
         task2aを実行する
         """
+
         rospy.loginfo("#### start Task 2a ####")
         self.change_pose("look_at_near_floor")
         gripper.command(0)
@@ -1079,11 +1309,13 @@ class WrsMainController(object):
         """
         self.change_pose("all_neutral")
         
+
         # 1. まず自前ONNXで引き出しを開ける
         self.open_all_drawers()
 
         # 2. その後、既存タスクを実行
         self.execute_task1()
+
         self.execute_task2a()
         self.execute_task2b()
 

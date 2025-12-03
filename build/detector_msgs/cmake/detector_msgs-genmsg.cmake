@@ -24,7 +24,11 @@ add_custom_target(_detector_msgs_generate_messages_check_deps_${_filename}
 
 get_filename_component(_filename "/workspace/src/detector_msgs/msg/BBoxArray.msg" NAME_WE)
 add_custom_target(_detector_msgs_generate_messages_check_deps_${_filename}
+<<<<<<< HEAD
   COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "detector_msgs" "/workspace/src/detector_msgs/msg/BBoxArray.msg" "detector_msgs/BBox:std_msgs/Header"
+=======
+  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "detector_msgs" "/workspace/src/detector_msgs/msg/BBoxArray.msg" "std_msgs/Header:detector_msgs/BBox"
+>>>>>>> origin/IR-B
 )
 
 get_filename_component(_filename "/workspace/src/detector_msgs/srv/SetTransformFromBBox.srv" NAME_WE)
@@ -34,12 +38,20 @@ add_custom_target(_detector_msgs_generate_messages_check_deps_${_filename}
 
 get_filename_component(_filename "/workspace/src/detector_msgs/srv/AddTransformToManager.srv" NAME_WE)
 add_custom_target(_detector_msgs_generate_messages_check_deps_${_filename}
+<<<<<<< HEAD
   COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "detector_msgs" "/workspace/src/detector_msgs/srv/AddTransformToManager.srv" "geometry_msgs/Quaternion:geometry_msgs/TransformStamped:geometry_msgs/Transform:geometry_msgs/Vector3:std_msgs/Header"
+=======
+  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "detector_msgs" "/workspace/src/detector_msgs/srv/AddTransformToManager.srv" "geometry_msgs/Quaternion:geometry_msgs/Transform:geometry_msgs/TransformStamped:std_msgs/Header:geometry_msgs/Vector3"
+>>>>>>> origin/IR-B
 )
 
 get_filename_component(_filename "/workspace/src/detector_msgs/srv/GetObjectDetection.srv" NAME_WE)
 add_custom_target(_detector_msgs_generate_messages_check_deps_${_filename}
+<<<<<<< HEAD
   COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "detector_msgs" "/workspace/src/detector_msgs/srv/GetObjectDetection.srv" "detector_msgs/BBox:std_msgs/Header:detector_msgs/BBoxArray"
+=======
+  COMMAND ${CATKIN_ENV} ${PYTHON_EXECUTABLE} ${GENMSG_CHECK_DEPS_SCRIPT} "detector_msgs" "/workspace/src/detector_msgs/srv/GetObjectDetection.srv" "detector_msgs/BBoxArray:std_msgs/Header:detector_msgs/BBox"
+>>>>>>> origin/IR-B
 )
 
 #
@@ -57,7 +69,11 @@ _generate_msg_cpp(detector_msgs
 _generate_msg_cpp(detector_msgs
   "/workspace/src/detector_msgs/msg/BBoxArray.msg"
   "${MSG_I_FLAGS}"
+<<<<<<< HEAD
   "/workspace/src/detector_msgs/msg/BBox.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
+=======
+  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/workspace/src/detector_msgs/msg/BBox.msg"
+>>>>>>> origin/IR-B
   ${CATKIN_DEVEL_PREFIX}/${gencpp_INSTALL_DIR}/detector_msgs
 )
 
@@ -71,13 +87,21 @@ _generate_srv_cpp(detector_msgs
 _generate_srv_cpp(detector_msgs
   "/workspace/src/detector_msgs/srv/AddTransformToManager.srv"
   "${MSG_I_FLAGS}"
+<<<<<<< HEAD
   "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/TransformStamped.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Transform.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Vector3.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
+=======
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Transform.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/TransformStamped.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Vector3.msg"
+>>>>>>> origin/IR-B
   ${CATKIN_DEVEL_PREFIX}/${gencpp_INSTALL_DIR}/detector_msgs
 )
 _generate_srv_cpp(detector_msgs
   "/workspace/src/detector_msgs/srv/GetObjectDetection.srv"
   "${MSG_I_FLAGS}"
+<<<<<<< HEAD
   "/workspace/src/detector_msgs/msg/BBox.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/workspace/src/detector_msgs/msg/BBoxArray.msg"
+=======
+  "/workspace/src/detector_msgs/msg/BBoxArray.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/workspace/src/detector_msgs/msg/BBox.msg"
+>>>>>>> origin/IR-B
   ${CATKIN_DEVEL_PREFIX}/${gencpp_INSTALL_DIR}/detector_msgs
 )
 
@@ -122,7 +146,11 @@ _generate_msg_eus(detector_msgs
 _generate_msg_eus(detector_msgs
   "/workspace/src/detector_msgs/msg/BBoxArray.msg"
   "${MSG_I_FLAGS}"
+<<<<<<< HEAD
   "/workspace/src/detector_msgs/msg/BBox.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
+=======
+  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/workspace/src/detector_msgs/msg/BBox.msg"
+>>>>>>> origin/IR-B
   ${CATKIN_DEVEL_PREFIX}/${geneus_INSTALL_DIR}/detector_msgs
 )
 
@@ -136,13 +164,21 @@ _generate_srv_eus(detector_msgs
 _generate_srv_eus(detector_msgs
   "/workspace/src/detector_msgs/srv/AddTransformToManager.srv"
   "${MSG_I_FLAGS}"
+<<<<<<< HEAD
   "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/TransformStamped.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Transform.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Vector3.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
+=======
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Transform.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/TransformStamped.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Vector3.msg"
+>>>>>>> origin/IR-B
   ${CATKIN_DEVEL_PREFIX}/${geneus_INSTALL_DIR}/detector_msgs
 )
 _generate_srv_eus(detector_msgs
   "/workspace/src/detector_msgs/srv/GetObjectDetection.srv"
   "${MSG_I_FLAGS}"
+<<<<<<< HEAD
   "/workspace/src/detector_msgs/msg/BBox.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/workspace/src/detector_msgs/msg/BBoxArray.msg"
+=======
+  "/workspace/src/detector_msgs/msg/BBoxArray.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/workspace/src/detector_msgs/msg/BBox.msg"
+>>>>>>> origin/IR-B
   ${CATKIN_DEVEL_PREFIX}/${geneus_INSTALL_DIR}/detector_msgs
 )
 
@@ -187,7 +223,11 @@ _generate_msg_lisp(detector_msgs
 _generate_msg_lisp(detector_msgs
   "/workspace/src/detector_msgs/msg/BBoxArray.msg"
   "${MSG_I_FLAGS}"
+<<<<<<< HEAD
   "/workspace/src/detector_msgs/msg/BBox.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
+=======
+  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/workspace/src/detector_msgs/msg/BBox.msg"
+>>>>>>> origin/IR-B
   ${CATKIN_DEVEL_PREFIX}/${genlisp_INSTALL_DIR}/detector_msgs
 )
 
@@ -201,13 +241,21 @@ _generate_srv_lisp(detector_msgs
 _generate_srv_lisp(detector_msgs
   "/workspace/src/detector_msgs/srv/AddTransformToManager.srv"
   "${MSG_I_FLAGS}"
+<<<<<<< HEAD
   "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/TransformStamped.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Transform.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Vector3.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
+=======
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Transform.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/TransformStamped.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Vector3.msg"
+>>>>>>> origin/IR-B
   ${CATKIN_DEVEL_PREFIX}/${genlisp_INSTALL_DIR}/detector_msgs
 )
 _generate_srv_lisp(detector_msgs
   "/workspace/src/detector_msgs/srv/GetObjectDetection.srv"
   "${MSG_I_FLAGS}"
+<<<<<<< HEAD
   "/workspace/src/detector_msgs/msg/BBox.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/workspace/src/detector_msgs/msg/BBoxArray.msg"
+=======
+  "/workspace/src/detector_msgs/msg/BBoxArray.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/workspace/src/detector_msgs/msg/BBox.msg"
+>>>>>>> origin/IR-B
   ${CATKIN_DEVEL_PREFIX}/${genlisp_INSTALL_DIR}/detector_msgs
 )
 
@@ -252,7 +300,11 @@ _generate_msg_nodejs(detector_msgs
 _generate_msg_nodejs(detector_msgs
   "/workspace/src/detector_msgs/msg/BBoxArray.msg"
   "${MSG_I_FLAGS}"
+<<<<<<< HEAD
   "/workspace/src/detector_msgs/msg/BBox.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
+=======
+  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/workspace/src/detector_msgs/msg/BBox.msg"
+>>>>>>> origin/IR-B
   ${CATKIN_DEVEL_PREFIX}/${gennodejs_INSTALL_DIR}/detector_msgs
 )
 
@@ -266,13 +318,21 @@ _generate_srv_nodejs(detector_msgs
 _generate_srv_nodejs(detector_msgs
   "/workspace/src/detector_msgs/srv/AddTransformToManager.srv"
   "${MSG_I_FLAGS}"
+<<<<<<< HEAD
   "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/TransformStamped.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Transform.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Vector3.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
+=======
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Transform.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/TransformStamped.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Vector3.msg"
+>>>>>>> origin/IR-B
   ${CATKIN_DEVEL_PREFIX}/${gennodejs_INSTALL_DIR}/detector_msgs
 )
 _generate_srv_nodejs(detector_msgs
   "/workspace/src/detector_msgs/srv/GetObjectDetection.srv"
   "${MSG_I_FLAGS}"
+<<<<<<< HEAD
   "/workspace/src/detector_msgs/msg/BBox.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/workspace/src/detector_msgs/msg/BBoxArray.msg"
+=======
+  "/workspace/src/detector_msgs/msg/BBoxArray.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/workspace/src/detector_msgs/msg/BBox.msg"
+>>>>>>> origin/IR-B
   ${CATKIN_DEVEL_PREFIX}/${gennodejs_INSTALL_DIR}/detector_msgs
 )
 
@@ -317,7 +377,11 @@ _generate_msg_py(detector_msgs
 _generate_msg_py(detector_msgs
   "/workspace/src/detector_msgs/msg/BBoxArray.msg"
   "${MSG_I_FLAGS}"
+<<<<<<< HEAD
   "/workspace/src/detector_msgs/msg/BBox.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
+=======
+  "/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/workspace/src/detector_msgs/msg/BBox.msg"
+>>>>>>> origin/IR-B
   ${CATKIN_DEVEL_PREFIX}/${genpy_INSTALL_DIR}/detector_msgs
 )
 
@@ -331,13 +395,21 @@ _generate_srv_py(detector_msgs
 _generate_srv_py(detector_msgs
   "/workspace/src/detector_msgs/srv/AddTransformToManager.srv"
   "${MSG_I_FLAGS}"
+<<<<<<< HEAD
   "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/TransformStamped.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Transform.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Vector3.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg"
+=======
+  "/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Quaternion.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Transform.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/TransformStamped.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/opt/ros/noetic/share/geometry_msgs/cmake/../msg/Vector3.msg"
+>>>>>>> origin/IR-B
   ${CATKIN_DEVEL_PREFIX}/${genpy_INSTALL_DIR}/detector_msgs
 )
 _generate_srv_py(detector_msgs
   "/workspace/src/detector_msgs/srv/GetObjectDetection.srv"
   "${MSG_I_FLAGS}"
+<<<<<<< HEAD
   "/workspace/src/detector_msgs/msg/BBox.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/workspace/src/detector_msgs/msg/BBoxArray.msg"
+=======
+  "/workspace/src/detector_msgs/msg/BBoxArray.msg;/opt/ros/noetic/share/std_msgs/cmake/../msg/Header.msg;/workspace/src/detector_msgs/msg/BBox.msg"
+>>>>>>> origin/IR-B
   ${CATKIN_DEVEL_PREFIX}/${genpy_INSTALL_DIR}/detector_msgs
 )
 

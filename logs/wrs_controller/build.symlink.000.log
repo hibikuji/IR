@@ -1,3 +1,8 @@
+<<<<<<< HEAD
 Symlinking /workspace/devel/share/wrs_controller/cmake/wrs_controllerConfig-version.cmake
 Symlinking /workspace/devel/share/wrs_controller/cmake/wrs_controllerConfig.cmake
+=======
+Symlinking /workspace/devel/share/wrs_controller/cmake/wrs_controllerConfig.cmake
+Symlinking /workspace/devel/share/wrs_controller/cmake/wrs_controllerConfig-version.cmake
+>>>>>>> origin/IR-B
 Symlinking /workspace/devel/lib/pkgconfig/wrs_controller.pc
