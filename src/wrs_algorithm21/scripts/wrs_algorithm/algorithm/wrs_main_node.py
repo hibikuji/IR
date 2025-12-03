@@ -658,10 +658,13 @@ class WrsMainController(object):
         grasp_pos = self.get_grasp_coordinate(grasp_bbox)
         self.change_pose("grasp_on_shelf")
         
+        self.goto_name("shelf_pos2")
+        '''
         self.goto_name("shelf_pos1")
         rospy.sleep(1.0)
         self.goto_name("shelf_pos2")
         rospy.sleep(1.0)
+        '''
 
         self.grasp_from_front_side(grasp_pos)
         self.change_pose("all_neutral")
@@ -754,7 +757,7 @@ class WrsMainController(object):
         rospy.loginfo("#### Start Advanced Lookahead Avoidance (Self-Filter 0.3m) ####")
 
         # 設定
-        y_steps = [2.2, 2.5, 2.8, 3.1, 3.5]
+        y_steps = [2.2, 2.6, 3.0, 3.5]
         candidate_xs = [x * 0.02 for x in range(110, 151)] # 2.20m ~ 3.02m
 
         # 現在地取得
@@ -769,7 +772,7 @@ class WrsMainController(object):
             # 1. 認識
             # -------------------------------------------------
             head_tilts = [-0.5, -1.1] 
-            head_pans = [0.8, 0.0, -0.8] 
+            head_pans = [0.7, 0.0, -0.7] 
 
             for tilt in head_tilts:
                 for pan in head_pans:
@@ -788,7 +791,7 @@ class WrsMainController(object):
                         # ギリギリを攻めて 0.30m に設定します。
                         dist_from_self = math.sqrt((current_x - pos.x)**2 + (current_y - pos.y)**2)
                         
-                        if dist_from_self < 0.30:
+                        if dist_from_self < 0.35:
                             rospy.loginfo(f"Ignoring self/noise at ({pos.x:.2f}, {pos.y:.2f}), dist={dist_from_self:.2f}")
                             continue
 
@@ -1108,7 +1111,8 @@ class WrsMainController(object):
                 elif most_likely_label == "SHAPE_ITEM":
                     # カテゴリ: Shape items -> Drawer_left 
                     rospy.loginfo("カテゴリ [Shape] -> Drawer left")
-                    self.put_in_place("drawer_left", "put_in_drawer_pose")
+                    self.put_in_place("bin_a_place", "put_in_bin")
+                    ##self.put_in_place("drawer_left", "put_in_drawer_pose")
 
                 elif most_likely_label == "TASK_ITEM":
                     # カテゴリ: Task items -> Bin_A 
@@ -1168,7 +1172,7 @@ class WrsMainController(object):
         self.open_all_drawers()
 
 
-        #self.execute_task1()
+        self.execute_task1()
         self.execute_task2a() # task2bを実行するには必ずtask2aを実行しないといけないので注意
 
         self.execute_task2b()
