@@ -780,6 +780,7 @@ class WrsMainController(object):
                     for bbox in detected_objs.bboxes:
                         if bbox.score < 0.3: continue
                         pos = self.get_grasp_coordinate(bbox)
+                        rospy.logwarn(f"障害物座標 [{pos}]")
                         if pos is None: continue
 
                         # 【修正】自分フィルタ
