@@ -1164,7 +1164,7 @@ class WrsMainController(object):
         self.change_pose("all_neutral")
         
         # 1. まず自前ONNXで引き出しを開ける
-        #self.open_all_drawers()
+        self.open_all_drawers()
 
 
         #self.execute_task1()

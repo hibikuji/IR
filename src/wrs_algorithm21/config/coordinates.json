@@ -6,7 +6,7 @@
         "near_logn_table_c": [1.0, 0.2, 90],
         "near_long_table_l": [0.2, 0.4, 90],
         "drawer": [0.35, 0.2, -90],
-        "stair_like_drawer":[1.0, 1.0, -90],
+        "stair_like_drawer":[0.2, 0.4, -90],
         "bin_a": [2.4, 0.0, -90],
         "bin_a_place": [2.35, 0.0, -90],
         "bin_b": [2.7, 0.0, -90],
@@ -31,6 +31,7 @@
     },
     "routes": {
         "test": [
+            "stair_like_drawer",
             "point1",
             "point2",
             "tall_table",
