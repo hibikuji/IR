@@ -695,125 +695,126 @@ class WrsMainController(object):
         return min_dist_found
 
     def execute_avoid_blocks(self):
-        # blockを避ける
         """
-        2手先読み + 経路干渉チェックを行う高度な回避
+        【修正版】Y軸（横方向）へ移動しながら、X軸（縦方向）の安全な位置を探す
+        2手先読み (Step1 -> Step2) も行い、詰み防止をする
         """
-        rospy.loginfo("#### Start Advanced Lookahead Avoidance ####")
+        rospy.loginfo("#### Start Advanced Lookahead Avoidance (Y-Axis Traverse) ####")
 
-        # 移動目標地点のX座標定義
-        # start -> step1 -> step2 -> step3(goal)
-        x_steps = [1.7, 2.3, 2.9]
+        # -----------------------------------------------------
+        # 軸の設定（画像に合わせて修正）
+        # -----------------------------------------------------
+        # Start(Y=1.85) -> Goal(Y=3.5) に向かって横に刻む
+        y_steps = [2.4, 2.9, 3.5]
         
-        # 探索するY座標の候補（0.1m刻みで細かく）
-        # 2.0m 〜 3.5m の範囲
-        candidate_ys = [y * 0.05 for y in range(45, 59)]
+        # 探索するX座標（縦の位置）の候補
+        # X=1.80m ~ 2.70m の範囲で、障害物がないレーンを探す
+        candidate_xs = [x * 0.05 for x in range(36, 55)] 
 
-        # 物理的な衝突限界 (HSRの半径は約0.215m)
-        # これより近いと確実にぶつかる
-        PHYSICAL_MIN_DIST = 0.22
+        PHYSICAL_MIN_DIST = 0.22 # ロボットの半径
 
         # 現在地を取得
         current_pose = self.get_relative_coordinate("map", "base_footprint")
         current_x = current_pose.translation.x
         current_y = current_pose.translation.y
 
-        for i, target_x in enumerate(x_steps):
-            rospy.loginfo(f"--- Planning for Step {i+1} (Target X={target_x}) ---")
+        for i, target_y in enumerate(y_steps):
+            rospy.loginfo(f"--- Planning for Step {i+1} (Target Y={target_y}) ---")
 
-            look_angles = [-0.6, -0.35] 
+            # -------------------------------------------------
+            # 1. 死角確認（首振り）
+            # -------------------------------------------------
+            look_tilt = -0.5
+            head_pans = [1.0, 0.0, -1.0] # 進行方向（左）〜右まで広く見る
 
-            # 1. 2つの角度で見て記録 
-            for angle in look_angles:
-                # 首を動かす
-                whole_body.move_to_joint_positions({"head_tilt_joint": angle, "head_pan_joint": 0.0})
-                rospy.sleep(0.8) # ブレが収まるのを待つ
+            for pan in head_pans:
+                whole_body.move_to_joint_positions({"head_tilt_joint": look_tilt, "head_pan_joint": pan})
+                rospy.sleep(0.8)
 
-                # 認識実行 (既存の物体認識を使う)
                 detected_objs = self.get_latest_detection()
                 
-                # 記憶に追加
                 for bbox in detected_objs.bboxes:
-                    # スコアが低い誤検出は無視
                     if bbox.score < 0.3: continue
-
-                    # 座標変換
                     pos = self.get_grasp_coordinate(bbox)
-                    
-                    # 重複チェック（既存の記憶と近すぎるなら追加しない）
+                    if pos is None: continue
+
                     is_known = False
                     for mem in self.obstacle_memory:
                         dist = math.sqrt((mem.x - pos.x)**2 + (mem.y - pos.y)**2)
-                        # 30cm以内の誤差なら同じ物体とみなす
                         if dist < 0.3: 
                             is_known = True
                             break
-                    
                     if not is_known:
                         self.obstacle_memory.append(pos)
-                        rospy.loginfo(f"New Obstacle found at angle {angle}: ({pos.x:.2f}, {pos.y:.2f})")
+                        rospy.loginfo(f"New Obstacle found at pan {pan}: ({pos.x:.2f}, {pos.y:.2f})")
 
-            # 2. 【2手先読み】ルートプランニング
-            # 「現在地 -> 次(Step1) -> その次(Step2)」が成立するルートを探す
+            # -------------------------------------------------
+            # 2. ルートプランニング（2手先読み）
+            # -------------------------------------------------
             
-            if i + 1 < len(x_steps):
-                next_target_x = x_steps[i + 1]
+            # 次のターゲットY座標を決める（先読み用）
+            if i + 1 < len(y_steps):
+                next_target_y = y_steps[i + 1]
                 is_last_step = False
             else:
-                next_target_x = target_x + 0.5
+                next_target_y = target_y + 0.5 # 最後は少し先まで見る
                 is_last_step = True
             
-            best_y1 = None
-            max_route_score = -1.0 # 移動コスト（少ないほうがいい）
+            best_x1 = None
+            max_route_score = -1.0
 
-            # 全ての「次のY候補」について調査
-            for y1 in candidate_ys:
-                # パス1: 現在地 -> 候補1 が安全か？
-                margin1 = self.is_path_safety_margin([current_x, current_y], [target_x, y1])
+            # 【1手目】現在地 -> 候補地(x1, target_y) を総当り
+            for x1 in candidate_xs:
+                # まず1手目が安全か？
+                margin1 = self.is_path_safety_margin([current_x, current_y], [x1, target_y])
                     
                 if margin1 < PHYSICAL_MIN_DIST:
-                    continue # ダメなら次の候補へ
+                    continue 
 
-                route_score_for_y1 = -1.0
-                # もしこれが最後のステップなら、Step1に行けるだけでOK
+                route_score_for_x1 = -1.0
+                
                 if is_last_step:
-                    route_score_for_y1 = margin1
+                    route_score_for_x1 = margin1
                 else:
+                    # =========================================
+                    # 【ここが2手先読み】
+                    # 1手目の場所 (x1) に行ったとして、そこからさらに次 (x2) へ行けるか？
+                    # =========================================
                     best_margin2 = -1.0
-
-                    # まだ先がある場合、Step2へのルートがあるかチェック（詰み防止）
-                
-                    for y2 in candidate_ys:
-                        # パス2: 候補1 -> 候補2 が安全か？
-                        margin2 = self.is_path_safety_margin([target_x, y1], [next_target_x, y2])
+                    
+                    for x2 in candidate_xs:
+                        # 候補地(x1, target_y) -> 次の目的地(x2, next_target_y)
+                        margin2 = self.is_path_safety_margin([x1, target_y], [x2, next_target_y])
                         
-                        if margin2 < PHYSICAL_MIN_DIST:
-                            continue
-
-                        if margin2 > best_margin2:
-                            best_margin2 = margin2
+                        if margin2 < PHYSICAL_MIN_DIST: continue
+                        if margin2 > best_margin2: best_margin2 = margin2
                 
-                    if best_margin2 < PHYSICAL_MIN_DIST:
-                        continue
+                    # 2手目が「どこにも行けない（詰み）」なら、この x1 は却下
+                    if best_margin2 < PHYSICAL_MIN_DIST: continue
 
-                    route_score_for_y1 = min(margin1, best_margin2)
-                if route_score_for_y1 > max_route_score:
-                    max_route_score = route_score_for_y1
-                    best_y1 = y1
+                    # 1手目と2手目のうち、より狭いほうをスコアとする（ボトルネック方式）
+                    route_score_for_x1 = min(margin1, best_margin2)
 
+                # スコア更新
+                if route_score_for_x1 > max_route_score:
+                    max_route_score = route_score_for_x1
+                    best_x1 = x1
+
+            # -------------------------------------------------
             # 3. 移動実行
-            if best_y1 is not None:
-                # マージン表示 (デバッグ用)
+            # -------------------------------------------------
+            if best_x1 is not None:
                 if max_route_score < 0.30:
                     rospy.logwarn(f"Narrow path selected! Bottleneck Margin={max_route_score:.3f}m")
                 else:
                     rospy.loginfo(f"Safe path selected. Bottleneck Margin={max_route_score:.3f}m")
                 
-                self.goto_pos([target_x, best_y1, 90])
+                # 安全なX座標 (best_x1) と 目標Y座標 (target_y) へ移動
+                self.goto_pos([best_x1, target_y, 90])
                 rospy.sleep(1.0)
-                # 現在地情報を更新（goto_posは誤差が出るのでtfで取り直しても良いが、ここでは目標値をセット）
-                current_x = target_x
-                current_y = best_y1
+                
+                current_x = best_x1
+                current_y = target_y
             else:
                 rospy.logerr("STUCK! No valid path found. Stopping task.")
                 break
