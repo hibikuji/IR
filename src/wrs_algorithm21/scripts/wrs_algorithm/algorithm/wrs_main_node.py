@@ -62,13 +62,35 @@ class HandleDetectorONNX(object):
         self.net.setInput(blob)
         
         # 2. 推論実行
-        outputs = self.net.forward()
+        # 2. 推論実行
+        # ★修正: 出力レイヤー名を明示的に指定することでエラーを回避します
+        out_layer_names = self.net.getUnconnectedOutLayersNames()
+        outputs = self.net.forward(out_layer_names)
         
         # 3. 出力の整形
-        # YOLOv8 output: [1, 5, 8400] (batch, xywh+conf, anchors) -> 転置して [8400, 5]
-        outputs = np.array([cv2.transpose(outputs[0])])
-        rows = outputs.shape[1]
+        # forward(names) はリスト形式で結果を返すため、最初の要素([0])を取り出します
+        # 形状: (1, 5, 8400) -> (5, 8400) に次元削減 -> (8400, 5) に転置
+        
+        # リストから取り出し (OpenCVのバージョンによって挙動が違うための安全策)
+        if isinstance(outputs, list):
+            output_tensor = outputs[0]
+        else:
+            output_tensor = outputs
 
+        # バッチ次元(1)を削除して (5, 8400) にする
+        output_tensor = np.squeeze(output_tensor)
+
+        # 転置して (8400, 5) にする: [rows, x,y,w,h,conf]
+        # 注意: OpenCVのMat型が返ってくる場合とNumpyの場合があるので np.array で受ける
+        prediction = np.transpose(output_tensor)
+        
+        # 後続のループ処理のために shape を合わせる
+        # 元のコードが outputs[0][i] でアクセスしているため、ダミー次元を追加して合わせるか、
+        # 以下のループ処理を prediction に合わせて書き換えるのが安全です。
+        
+        # ★ループ処理を以下のようにシンプルに書き換えることを推奨します
+        rows = prediction.shape[0]
+        
         boxes = []
         scores = []
 
@@ -78,11 +100,14 @@ class HandleDetectorONNX(object):
         y_factor = img_h / input_height
 
         for i in range(rows):
-            # output[0][i] = [center_x, center_y, w, h, confidence]
-            confidence = outputs[0][i][4]
+            # prediction[i] = [center_x, center_y, w, h, confidence] (クラスが1つの場合)
+            # もしクラスが複数の場合は [cx, cy, w, h, conf_cls1, conf_cls2...] となります
             
+            # YOLOv8のONNX出力(1クラス)は [cx, cy, w, h, score] の5要素です
+            confidence = prediction[i][4]
+
             if confidence >= self.conf_threshold:
-                box = outputs[0][i][0:4]
+                box = prediction[i][0:4]
                 x_center = box[0]
                 y_center = box[1]
                 w = box[2]
@@ -96,6 +121,7 @@ class HandleDetectorONNX(object):
                 
                 boxes.append([left, top, width, height])
                 scores.append(float(confidence))
+        
 
         # 4. NMS (重なりを除去)
         indices = cv2.dnn.NMSBoxes(boxes, scores, self.conf_threshold, self.iou_threshold)
