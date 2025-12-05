@@ -1,6 +1,5 @@
 {
     "positions": {
-<<<<<<< HEAD
         "near_tall_table_c": [0.0, 0.4, 90],
         "tall_table": [-0.02, 1.0, 95],
         "long_table_r": [1.45, 1.0, 90],
@@ -8,13 +7,6 @@
         "near_long_table_l": [0.2, 0.4, 90],
         "drawer": [0.35, 0.2, -90],
         "stair_like_drawer":[0.2, 0.4, -90],
-=======
-        "tall_table": [-0.02, 1.0, 95],
-        "long_table_r": [1.45, 1.0, 90],
-        "near_long_table_l": [2.2, 0.4, 90],
-        "drawer": [0.35, 0.2, -90],
-        "stair_like_drawer":[0.178, 0.8, -90],
->>>>>>> origin/IR-B
         "bin_a": [2.4, 0.0, -90],
         "bin_a_place": [2.35, 0.0, -90],
         "bin_b": [2.7, 0.0, -90],
@@ -24,7 +16,6 @@
         "shelf": [2.3, 3.9, 90],
         "person_a": [0.7, 2.8, 180],
         "person_b": [0.7, 3.9, 180],
-<<<<<<< HEAD
         "home": [0, 0.2, 0],
         "drawer_left": [0.5, 0.3, -90],
         "drawer_top": [0.2, 0.3, -90],
@@ -43,12 +34,6 @@
             "stair_like_drawer",
             "point1",
             "point2",
-=======
-        "home": [0, 0.2, 0]
-    },
-    "routes": {
-        "test": [
->>>>>>> origin/IR-B
             "tall_table",
             "long_table_r",
             "near_long_table_l",
@@ -62,7 +47,6 @@
             "shelf",
             "person_a",
             "person_b",
-<<<<<<< HEAD
             "home",
             "drawer_left",
             "drawer_top",
@@ -73,9 +57,6 @@
             "container_B",
             "shelf_pos1",
             "shelf_pos2"
-=======
-            "home"
->>>>>>> origin/IR-B
         ]
     }
 }

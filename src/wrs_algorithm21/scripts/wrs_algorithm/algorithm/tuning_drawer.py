@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import rospy
-<<<<<<< HEAD
 from wrs_main_node import WrsMainController
 # wrs_main_nodeで使われている制御モジュールを直接インポート
 from wrs_algorithm.util import omni_base, whole_body, gripper
+
 
 def move_backward(distance):
     """
@@ -14,6 +14,7 @@ def move_backward(distance):
     rospy.loginfo(f"現在地から {distance}m 後退します...")
     # go_rel(x, y, yaw): xをマイナスにするとロボット後方へ進む
     omni_base.go_rel(-distance, 0, 0)
+
 
 def pull_out_test(ctrl, x, y, z):
     """
@@ -24,7 +25,7 @@ def pull_out_test(ctrl, x, y, z):
     yaw = -90
     pitch = 0
     roll = 0
-    
+
     rospy.loginfo(f"テスト実行: x={x}, y={y}, z={z} (アームのみ動作)")
 
     # 1. 構え（テーブル上の物体を掴む姿勢などを流用）
@@ -35,7 +36,7 @@ def pull_out_test(ctrl, x, y, z):
     # ハンドルの「Y軸方向手前」に一度アームを持っていく
     # wrs_main_node内の定数と同じ 0.2m を使用
     approach_y = y + ctrl.TROFAST_Y_OFFSET
-    
+
     # 手前へ移動 (ここは掴まない)
     whole_body.move_end_effector_pose(x, approach_y, z, yaw, pitch, roll)
 
@@ -50,17 +51,21 @@ def pull_out_test(ctrl, x, y, z):
     whole_body.move_end_effector_pose(x, approach_y, z, yaw, pitch, roll)
 
     # 6. 放す
-    gripper.command(1) 
-    
+    gripper.command(1)
+
     # 7. 姿勢を戻す
     ctrl.change_pose("all_neutral")
 
+
 def main():
+    """
+    main関数
+    """
     rospy.init_node('drawer_tuning_tool_standalone')
     ctrl = WrsMainController()
-    
+
     rospy.loginfo("初期化完了。まずは定位置へ移動します...")
-    
+
     # 1. まずは通常の「近すぎる」定位置へ移動
     ctrl.goto_name("stair_like_drawer")
     ctrl.change_pose("look_at_near_floor")
@@ -78,61 +83,31 @@ def main():
         print(f"現在、定位置から {BACK_DISTANCE}m 後ろにいます。")
         print("試したいハンドルの座標を入力してください")
         print("入力例: 0.44 0.2 0.35  (終了は q )")
-        
+
         user_input = input("x y z >> ")
-=======
-from wrs_main_node import WrsMainController # 既存のクラスをインポート
 
-def main():
-    rospy.init_node('drawer_tuning_tool')
-    ctrl = WrsMainController()
-    
-    rospy.loginfo("初期化完了。引き出しの前まで移動します...")
-    
-    # まず定位置（引き出しの前）まで移動してしまう
-    ctrl.goto_name("stair_like_drawer")
-    ctrl.change_pose("look_at_near_floor")
-
-    while not rospy.is_shutdown():
-        print("\n========== 座標調整モード ==========")
-        print("試したい座標を入力してください (例: 0.44 0.2 0.4)")
-        print("終了するには 'q' を入力")
-        
-        user_input = input("x y z >> ") # Python 3なら input()
->>>>>>> origin/IR-B
-        
         if user_input == 'q':
             break
-            
         try:
-<<<<<<< HEAD
-=======
             # 入力を数値に変換
->>>>>>> origin/IR-B
+
             coords = [float(v) for v in user_input.split()]
             if len(coords) != 3:
                 print("エラー: 数字を3つスペース区切りで入力してください")
                 continue
-                
+
             x, y, z = coords
-<<<<<<< HEAD
-            
+
             # 自作のテスト関数を呼ぶ（勝手に移動しないやつ）
             pull_out_test(ctrl, x, y, z)
-=======
-            rospy.loginfo("テスト実行: x=%.2f, y=%.2f, z=%.2f", x, y, z)
-            
-            # 指定した座標で引き出しを開ける動作を実行
-            # 角度(-90, 0, 0)は固定にしていますが、必要ならここも変えられるようにします
-            ctrl.pull_out_trofast(x, y, z, -90, 0, 0)
->>>>>>> origin/IR-B
-            
+
             rospy.loginfo("動作完了。次の座標を入力できます。")
-            
+
         except ValueError:
             print("エラー: 数値を正しく入力してください")
         except Exception as e:
             rospy.logerr("実行エラー: %s", e)
+
 
 if __name__ == '__main__':
     main()

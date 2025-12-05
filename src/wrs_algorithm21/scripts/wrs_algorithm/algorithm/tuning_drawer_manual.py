@@ -9,6 +9,7 @@ import traceback # 【追加】エラー表示用
 from wrs_main_node import WrsMainController
 from wrs_algorithm.util import omni_base, whole_body, gripper
 
+
 def quaternion_to_yaw_degree(q):
     """
     tfライブラリを使わずに、クォータニオン(x,y,z,w)から
@@ -27,17 +28,18 @@ def quaternion_to_yaw_degree(q):
 
     return math.degrees(yaw_rad)
 
+
 def get_current_pose(ctrl):
     """
     現在地（マップ座標系での絶対座標 x, y, yaw）を取得して返す
     """
     # mapフレームからbase_footprint(ロボット足元)への座標変換を取得
     pose_stamped = ctrl.get_relative_coordinate("map", "base_footprint")
-    
+
     if pose_stamped is None:
         rospy.logerr("現在地が取得できません！")
         return 0.0, 0.0, 0.0
-    
+
     # TransformStamped型から座標を取り出す
     x = pose_stamped.translation.x
     y = pose_stamped.translation.y
@@ -45,32 +47,34 @@ def get_current_pose(ctrl):
 
     # 自作関数でYaw角を計算
     yaw_deg = quaternion_to_yaw_degree(rotation)
-    
+
     return x, y, yaw_deg
+
 
 def set_arm_extended():
     """アームを水平に伸ばす（初期姿勢）"""
     rospy.loginfo("アームを水平に展開します...")
     whole_body.move_to_joint_positions({
         "arm_lift_joint":  0.1,  # 昇降高さ
-        "arm_flex_joint":  -1.57,   # 肩: 0=水平
+        "arm_flex_joint": -1.57,   # 肩: 0=水平
         "arm_roll_joint":  0.0,
-        "wrist_flex_joint": 0.0, # 手首: 正面向き
+        "wrist_flex_joint": 0.0,  # 手首: 正面向き
         "wrist_roll_joint": 0.0,
         "head_pan_joint":  0.0,
         "head_tilt_joint": -0.5
     })
     gripper.command(1) # ハンドを開く
 
+
 def move_shoulder(shoulder_deg):
     """肩の角度だけを絶対角度(deg)で指定して、手先は常に「真下」を向くようにする"""
     # 1. 肩の角度をラジアンに変換
     shoulder_rad = math.radians(shoulder_deg)
-    
+
     # 2. 手先を真下(-90度 = -1.57rad)に向けるための手首角度を計算
     # Global(-1.57) = Shoulder + Wrist  =>  Wrist = -1.57 - Shoulder
     target_wrist_rad = 0.0 - shoulder_rad
-    
+
     rospy.loginfo(f"Hook連動: 肩={shoulder_deg}deg, 手首={math.degrees(target_wrist_rad):.2f}deg")
 
     # 3. 全身制御指令を送る
@@ -89,19 +93,23 @@ def clean_memory(ctrl):
     """溜まったデータを捨ててメモリ掃除をする関数"""
     #リストの中身を空にする
     ctrl.instruction_list = []
-    ctrl.detection_list   = []
+    ctrl.detection_list = []
     #Pythonのメモリ領域を強制開放
     gc.collect()
     rospy.loginfo("Memory cleaned.")
 
+
 def main():
+    """
+    main関数
+    """
     rospy.init_node('drawer_tuning_abs')
 
     # ガベージコレクション有効化
     gc.enable()
 
     ctrl = WrsMainController()
-    
+
     rospy.loginfo("初期化中")
     ctrl.change_pose("all_neutral")
     rospy.sleep(1.0)
@@ -115,17 +123,17 @@ def main():
         # wrs_main_node内で無限に追加され続けるリストをここで強制的に空にする
         # =========================================================
         ctrl.instruction_list = []
-        ctrl.detection_list   = []
-        
+        ctrl.detection_list = []
+
         # 不要メモリの強制回収
         gc.collect()
         rospy.loginfo("Memory cleaned.")
-        
+
         # ループのたびに「今の絶対座標」を表示する
         curr_x, curr_y, curr_yaw = get_current_pose(ctrl)
-        
+
         print("\n========== 絶対座標 検証モード (tf不使用版) ==========")
-        print(f"【現在地 (Map座標)】")
+        print("【現在地 (Map座標)】")
         print(f"  X : {curr_x:.4f}")
         print(f"  Y : {curr_y:.4f}")
         print(f"  Yaw: {curr_yaw:.2f} deg")
@@ -136,7 +144,7 @@ def main():
         print(" 3: 掴む (Grasp)")
         print(" 4: 放す (Open) & リセット")
         print(" q: 終了")
-        
+
         try:
             try:
                 cmd = input("Command >> ") # Python 3用
@@ -146,14 +154,12 @@ def main():
             break
 
         clean_memory(ctrl)
-        
+
         if cmd == 'q':
             break
-            
         elif cmd == '1':
             print("移動先の絶対座標を入力してください")
             print(f"ヒント: 現在は {curr_x:.2f} {curr_y:.2f} {curr_yaw:.0f} です")
-            
             try:
                 raw = input("Target X Y Yaw >> ")
                 vals = [float(v) for v in raw.split()]
@@ -177,11 +183,12 @@ def main():
         elif cmd == '3':
             rospy.loginfo("ハンドを閉じます")
             gripper.command(0)
-            
+
         elif cmd == '4':
             rospy.loginfo("ハンドを開き、アームを水平に戻します")
             gripper.command(1)
             # set_arm_extended()
+
 
 if __name__ == '__main__':
     main()
