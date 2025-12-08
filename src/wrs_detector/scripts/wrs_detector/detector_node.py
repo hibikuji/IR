@@ -30,11 +30,9 @@ class Detector:
         self.image_req_time = rospy.Time.now()
         self.current_msg = None
 
-<<<<<<< HEAD
+
         # 動作モードの取得ｋ
-=======
-        # 動作モードの取得
->>>>>>> origin/IR-B
+
         self.mode = rospy.get_param("~mode")
         if self.mode not in [self.MODE_CONTINUOUS, self.MODE_REQUIRE_REQUEST]:
             err_msg = "unknown type of Mode {}".format(self.mode)

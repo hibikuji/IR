@@ -8,7 +8,6 @@
         "head_tilt_joint": 0.0,
         "head_pan_joint": 0.0
     },
-<<<<<<< HEAD
     "put_in_drawer_pose": {
         "arm_lift_joint": 0.0,
         "arm_flex_joint": -1.0,
@@ -45,8 +44,6 @@
         "head_tilt_joint": 0.0,
         "head_pan_joint": 0.0
     },
-=======
->>>>>>> origin/IR-B
     "look_at_tall_table": {
         "arm_lift_joint": 0.0,
         "arm_flex_joint": 0.0,

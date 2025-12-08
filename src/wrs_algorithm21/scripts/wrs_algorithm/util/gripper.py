@@ -30,7 +30,7 @@ def command(value):
     success = GRIPPER_CMD.go()
     rospy.sleep(6)
     return success
-<<<<<<< HEAD
+
 
 def get_current_gap():
     """ sakura
@@ -50,5 +50,4 @@ def get_current_gap():
         return current_values[0]
     else:
         return 0.0
-=======
->>>>>>> origin/IR-B
+
