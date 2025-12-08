@@ -7,9 +7,10 @@ WRS環境内でロボットを動作させるためのメインプログラム (
 from __future__ import unicode_literals, print_function, division, absolute_import
 import json
 import os
-from select import select
+import math
+import re
 import traceback
-from turtle import pos
+
 import rospy
 import rospkg
 import tf2_ros
@@ -24,9 +25,6 @@ from detector_msgs.srv import (
     GetObjectDetection, GetObjectDetectionRequest)
 from detector_msgs.msg import BBox
 from wrs_algorithm.util import omni_base, whole_body, gripper
-import math
-import re
-
 
 # ==========================================================
 # 【追加】取っ手専用：YOLO(ONNX)をOpenCVだけで動かすクラス
@@ -217,12 +215,12 @@ class WrsMainController:
             )
             # ROS画像をOpenCV形式に変換
             cv_img = self.bridge.imgmsg_to_cv2(msg, "bgr8")
-            
-            # 【デバッグ用】今見ている画像を保存して確認する（あとで消してOK）
+
+            # 【デバッグ用】今見ている画像を保存して確認する（あとで消してOK
             if np.max(cv_img) == 0:
                 rospy.logwarn("取得した画像が真っ暗です！")
                 return []
-            
+
             cv2.imwrite("/workspace/debug_view.jpg", cv_img)
             rospy.loginfo("画像を保存しました")
 
@@ -646,7 +644,7 @@ class WrsMainController:
             else:
                 rospy.logwarn("Grasp Failed... (Gap is too small)")
                 # 失敗したのでハンドを開くなどの処理が必要ならここに入れる
-                gripper.command(1.0) 
+                gripper.command(1.0)
                 return False
 
         return is_really_success()
@@ -1111,10 +1109,10 @@ class WrsMainController:
         """
         rospy.loginfo("#### start Task 1 ####")
         hsr_position = [
-            #("near_tall_table_c", "look_at_near_floor"),
+            # ("near_tall_table_c", "look_at_near_floor"),
             ("tall_table", "look_at_tall_table"),
             ("near_logn_table_c", "look_at_near_floor"),
-            #("near_long_table_l", "look_at_near_floor"),
+            # ("near_long_table_l", "look_at_near_floor"),
             ("long_table_r", "look_at_tall_table"),
         ]
 
@@ -1131,10 +1129,10 @@ class WrsMainController:
 
                 # 把持対象の有無チェック
                 detected_objs = self.get_latest_detection()
-                ##valid_bboxes = [
-                ##    bbox for bbox in detected_objs.bboxes 
-                ##    if bbox.label not in ignore_labels_at_current_loc
-                ##]
+                # valid_bboxes = [
+                # bbox for bbox in detected_objs.bboxes
+                # if bbox.label not in ignore_labels_at_current_loc
+                # ]
                 valid_bboxes = []
                 for bbox in detected_objs.bboxes:
                     # 1. 無視リストに入っているか？
@@ -1147,7 +1145,7 @@ class WrsMainController:
                     if bbox_area < self.MIN_BBOX_AREA:
                         rospy.logwarn("無視: [%s] は小さすぎます (Area: %d)", bbox.label, bbox_area)
                         continue
-                    
+
                     if bbox_area > self.MAX_BBOX_AREA:
                         rospy.logwarn("無視: [%s] は大きすぎます (Area: %d)", bbox.label, bbox_area)
                         continue
@@ -1155,11 +1153,11 @@ class WrsMainController:
                     # 合格したものだけリストに入れる
                     valid_bboxes.append(bbox)
                 graspable_obj = self.get_most_graspable_obj(valid_bboxes)
-                ## graspable_obj = self.get_most_graspable_obj(detected_objs.bboxes)
+                # graspable_obj = self.get_most_graspable_obj(detected_objs.bboxes)
 
                 if graspable_obj is None:
                     rospy.logwarn("Cannot determine object to grasp. Grasping is aborted.")
-                    #continue
+                    # continue
                     break
 
                 label = graspable_obj["label"]
@@ -1179,10 +1177,10 @@ class WrsMainController:
                     rospy.logwarn("Failed to grasp [%s]", label)
                     if label not in self.IGNORE_LIST:
                         ignore_labels_at_current_loc.append(label)
-                        #self.IGNORE_LIST.append(label)
+                        # self.IGNORE_LIST.append(label)
                         rospy.sleep(1.0)
                     continue
-                    #break
+                    # break
 
                 most_likely_label = self.get_most_likely_category(label)
                 rospy.logwarn("検出ラベル[%s]のもっともらしいカテゴリは [%s]", label, most_likely_label)
@@ -1196,37 +1194,37 @@ class WrsMainController:
                         self.put_in_place("tray_A", "put_in_tray_pose")
                     else:
                         self.put_in_place("tray_B", "put_in_tray_pose")
-                    food_cnt += 1 # Food専用カウンターを増やす
+                    food_cnt += 1  # Food専用カウンターを増やす
                 elif most_likely_label == "KITCHEN_ITEM":
-                    # カテゴリ: Kitchen items -> Container_A 
+                    # カテゴリ: Kitchen items -> Container_A
                     rospy.loginfo("カテゴリ [Kitchen] -> Container A")
                     self.put_in_place("container_A", "put_in_container_pose")
 
                 elif most_likely_label == "TOOL_ITEM":
-                    # カテゴリ: Tools -> Drawer_top / Drawer_bottom 
+                    # カテゴリ: Tools -> Drawer_top / Drawer_bottom
                     rospy.loginfo("カテゴリ [Tools] -> Drawer Top / Bottom")
                     if tool_cnt % 2 == 0:
                         self.put_in_place("bin_a_place", "put_in_bin")
-                        ## self.put_in_place("drawer_top", "put_in_drawer_pose")
+                        # self.put_in_place("drawer_top", "put_in_drawer_pose")
                     else:
                         self.put_in_place("bin_b_place", "put_in_bin")
-                        ## self.put_in_place("drawer_bottom", "put_in_drawer_pose")
-                    tool_cnt += 1 # Tool専用カウンターを増やす
+                        # self.put_in_place("drawer_bottom", "put_in_drawer_pose")
+                    tool_cnt += 1  # Tool専用カウンターを増やす
 
                 elif most_likely_label == "SHAPE_ITEM":
-                    # カテゴリ: Shape items -> Drawer_left 
+                    # カテゴリ: Shape items -> Drawer_left
                     rospy.loginfo("カテゴリ [Shape] -> Drawer left")
                     self.put_in_place("drawer_left", "put_in_drawer_pose")
 
                 elif most_likely_label == "TASK_ITEM":
-                    # カテゴリ: Task items -> Bin_A 
+                    # カテゴリ: Task items -> Bin_A
                     rospy.loginfo("カテゴリ [Task] -> Bin A")
-                    self.put_in_place("bin_a_place", "put_in_bin") # 既存のbin_a_placeを使用
+                    self.put_in_place("bin_a_place", "put_in_bin")  # 既存のbin_a_placeを使用
 
                 else:
-                    # カテゴリ: Unknown objects -> Bin_B 
+                    # カテゴリ: Unknown objects -> Bin_B
                     rospy.logwarn("ラベル [%s] は分類外です。[Unknown] として Bin B に置きます。", label)
-                    self.put_in_place("bin_b_place", "put_in_bin") # 既存のbin_b_placeを使用
+                    self.put_in_place("bin_b_place", "put_in_bin")  # 既存のbin_b_placeを使用
 
     def execute_task2a(self):
         """
@@ -1245,11 +1243,10 @@ class WrsMainController:
         self.goto_name("go_throw_2a")
         whole_body.move_to_go()
 
-    
     def execute_task2b(self):
-        
-        #task2bを実行する
-        
+
+        # task2bを実行する
+
         rospy.loginfo("#### start Task 2b ####")
 
         # 命令文を取得
@@ -1266,13 +1263,12 @@ class WrsMainController:
         # 指定したオブジェクトを指定した配達先へ
         if target_obj and target_person:
             self.deliver_to_target(target_obj, target_person)
-    
-    
+
     """
     def execute_task2b(self):
-        
+
         #Task2b (multi-instruction mode)
-        
+
         rospy.loginfo("#### start Task 2b (multi + internal instructions mode) ####")
 
         # -----------------------------
